@@ -1,0 +1,9 @@
+{{ define "form" }}
+<form data-on-submit="@put('/submit')" id="form">
+  {{ .Content }}
+  <p>
+    <button type="submit">Submit</button>
+    <button type="button" data-on-click__stop="@post('/reset')">Reset</button>
+  </p>
+</form>
+{{ end }}

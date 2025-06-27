@@ -1,0 +1,48 @@
+{{ define "input_string" }}
+<div data-signals="{ {{ .Id }}: { value: '' } }">
+    <label>{{ .Title }}:</label><br />
+    <input data-bind="${{ .Id }}.value" class="input" />
+</div>
+{{ end }}
+
+{{ define "input_number" }}
+<div data-signals="{ {{ .Id }}: { value: undefined } }">
+    <label>{{ .Title }}:</label><br />
+    <input data-bind="${{ .Id }}.value" type="number" class="input" />
+</div>
+{{ end }}
+
+{{ define "lookup" }}
+<div data-signals="{ {{ .Id }}: { value: '', open: false, offset: 0, limit: 15} }">
+    <label>{{ .Title }}:</label>
+    <div class="lookup">
+        <div>
+            <input 
+                class="lookup-input" 
+                data-bind="${{ .Id }}.value"
+                data-on-click__stop="@setAll('*.open', false); ${{ .Id }}.open = true"
+            />
+        </div>
+        <ul 
+            id="{{ .Id }}-lookup-list"
+            class="lookup-list" 
+            data-show="${{ .Id }}.open" 
+            data-on-click__outside="${{ .Id }}.open = false"
+            data-on-intersect__once="@get('/fields/{{ .Id }}/widgets/lookup/list')" 
+        >
+        </ul>
+    <div>
+</div>
+{{ end }}
+
+{{ define "lookup_items" }}
+    {{ range .List }}
+        <li 
+            class="lookup-list-item" 
+            data-on-click="${{ $.Id }}.value = '{{ .Value }}'; ${{ $.Id }}.open = false"
+            {{if .IsLast}} 
+                data-on-intersect__once="@get('/fields/{{ $.Id }}/widgets/lookup/list')" 
+            {{end}}
+        >{{ .Value }}</li>
+    {{ end }} 
+{{ end }}
