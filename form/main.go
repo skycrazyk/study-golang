@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"text/template"
 
 	"github.com/brianvoe/gofakeit/v6"
@@ -37,11 +38,11 @@ var schema = Form{
 		Title:  "Хобби",
 		Widget: "lookup",
 	},
-	{
-		Id:     "city",
-		Title:  "Город",
-		Widget: "lookup",
-	},
+	// {
+	// 	Id:     "city",
+	// 	Title:  "Город",
+	// 	Widget: "lookup",
+	// },
 }
 
 type LookupTmplData struct {
@@ -64,7 +65,6 @@ type LookupListItem struct {
 	Value  string
 	IsLast bool
 }
-
 func buildList(items []string) []LookupListItem {
 	result := make([]LookupListItem, len(items))
 
@@ -77,6 +77,12 @@ func buildList(items []string) []LookupListItem {
 
 	return result
 }
+
+// contains returns true if substr is found in s (case-insensitive)
+func contains(s, substr string) bool {
+	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
+}
+
 
 func main() {
 	gofakeit.Seed(111)
@@ -132,21 +138,32 @@ func handleLookupList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	signals := store[fieldId]
-
 	sse := datastar.NewSSE(w, r)
+
+	filteredItems := lookupAllItems 
+
+	if signals.Value != "" {
+		filteredItems = make([]string, 0)
+
+		for _, item := range lookupAllItems {
+			if contains(item, signals.Value.(string)) {
+				filteredItems = append(filteredItems, item)
+			}
+		}
+	}
 
     start := signals.Offset
     end := signals.Offset + signals.Limit
 
-    if start > len(lookupAllItems) {
-        start = len(lookupAllItems)
+    if start > len(filteredItems) {
+        start = len(filteredItems)
     }
 
-    if end > len(lookupAllItems) {
-        end = len(lookupAllItems)
+    if end > len(filteredItems) {
+        end = len(filteredItems)
     }
 
-    pageList := buildList(lookupAllItems[start:end])
+    pageList := buildList(filteredItems[start:end])
 
 	itemsData := LookupTmplData{
 		List: pageList,
@@ -160,12 +177,18 @@ func handleLookupList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmm := datastar.FragmentMergeModeAppend 
+
+	if signals.Offset == 0 {
+		fmm = datastar.FragmentMergeModeInner
+	}
+
 	sse.MergeSignals([]byte(`{` + fieldId + `: {"offset":` + strconv.Itoa(signals.Offset + signals.Limit) + `}}`))
 
 	sse.MergeFragments(
 		buf.String(), 
 		datastar.WithSelector(`#` + fieldId + `-lookup-list`), 
-		datastar.WithMergeMode(datastar.FragmentMergeModeAppend),
+		datastar.WithMergeMode(fmm),
 	)
 }
 
