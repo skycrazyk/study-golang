@@ -2,11 +2,10 @@ package main
 
 import (
 	"bytes"
-	html "html/template"
+	"html/template"
 	"log"
 	"net/http"
 	"strconv"
-	"text/template"
 
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/go-chi/chi/v5"
@@ -37,11 +36,11 @@ var schema = Form{
 		Title:  "Хобби",
 		Widget: "lookup",
 	},
-	{
-		Id:     "city",
-		Title:  "Город",
-		Widget: "lookup",
-	},
+	// {
+	// 	Id:     "city",
+	// 	Title:  "Город",
+	// 	Widget: "lookup",
+	// },
 }
 
 type LookupTmplData struct {
@@ -98,7 +97,7 @@ func main() {
     http.ListenAndServe(":8080", r)
 }
 
-func fieldsTempls(f Form) html.HTML {
+func fieldsTempls(f Form) template.HTML {
 	var buf bytes.Buffer
 
 	for _, field := range f {
@@ -107,12 +106,12 @@ func fieldsTempls(f Form) html.HTML {
 		}
 	}
 
-	return html.HTML(buf.String())
+	return template.HTML(buf.String())
 }
 
 func handleForm(w http.ResponseWriter, r *http.Request) {
     err := templates.ExecuteTemplate(w, "layout", struct {
-		Content html.HTML
+		Content template.HTML
 	}{
 		Content: fieldsTempls(schema),
 	})
