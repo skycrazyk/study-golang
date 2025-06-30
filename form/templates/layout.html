@@ -5,55 +5,12 @@
     <meta charset="UTF-8" />
     <title>Form Example</title>
     <script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.0-beta.11/bundles/datastar.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
     <style>
         * {
             box-sizing: border-box;
-        }
-
-        :root {
-            --input-height: 20px;
-            --input-width: 200px;
-        }
-
-        .input {
-            display: block;
-            height: var(--input-height);
-            width: var(--input-width);
-        }
-            
-        .lookup {
-            position: relative;
-        }
-
-        .lookup-input {
-            display: block;
-            height: var(--input-height);
-            width: var(--input-width);
-        }
-    
-        .lookup-list {
-            max-height: 200px;
-            position: absolute;
-            top: var(--input-height);
-            left: 0;
-            width: calc(var(--input-width) + 20px); 
-            box-shadow: 3px 3px 3px #cccccc;
-            background: white;
-            overflow-x: hidden;
-            overflow-y: auto;
-            margin: 0;
-            padding: 6px;
-            border: 1px solid #cccccc;
-            z-index: 1;
-        }
-
-        .lookup-list-item {
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .lookup-list-item:hover {
-            background: #cccccc;
         }
     </style>
   </head>
