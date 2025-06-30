@@ -13,24 +13,20 @@
 {{ end }}
 
 {{ define "lookup" }}
-<div data-signals="{ {{ .Id }}: { value: '', open: false, offset: 0, limit: 15} }">
+<div data-signals="{ {{ .Id }}: { value: '', open: false, offset: 0, limit: 15, searchIsLoading: false } }">
     <label>{{ .Title }}:</label>
     <div class="lookup">
         <div>
+            <div data-show="${{ .Id }}.searchIsLoading">Loading</div>
             <input 
                 class="lookup-input" 
                 data-bind="${{ .Id }}.value"
                 data-on-click__stop="@setAll('*.open', false); ${{ .Id }}.open = true"
+                data-on-signal-change-{{ .Id }}.value__debounce.700ms="${{ .Id }}.offset = 0; ${{ .Id }}.open && @get('/fields/{{ .Id }}/widgets/lookup/list')"
+                data-indicator="{{ .Id }}.searchIsLoading"
             />
         </div>
-        <ul 
-            id="{{ .Id }}-lookup-list"
-            class="lookup-list" 
-            data-show="${{ .Id }}.open" 
-            data-on-click__outside="${{ .Id }}.open = false"
-            data-on-intersect__once="@get('/fields/{{ .Id }}/widgets/lookup/list')" 
-        >
-        </ul>
+        {{ template "lookup_list" . }}
     <div>
 </div>
 {{ end }}
@@ -47,4 +43,23 @@
     {{ end }} 
 {{ end }}
 
-<!-- data-on-signal-change-{{ .Id }}.value="${{ .Id }}.offset = 0; ${{ .Id }}.open && @get('/fields/{{ .Id }}/widgets/lookup/list')" -->
+{{ define "lookup_list" }}
+    <ul 
+        id="{{ .Id }}-lookup-list"
+        class="lookup-list" 
+        data-show="${{ .Id }}.open" 
+        data-on-click__outside="${{ .Id }}.open = false"
+        data-on-intersect__once="@get('/fields/{{ .Id }}/widgets/lookup/list')" 
+    >
+    </ul>
+{{ end }}
+
+{{ define "lookup_list_fix" }}
+    <ul 
+        id="{{ .Id }}-lookup-list"
+        class="lookup-list" 
+        data-show="${{ .Id }}.open" 
+        data-on-click__outside="${{ .Id }}.open = false"
+    >
+    </ul>
+{{ end }}

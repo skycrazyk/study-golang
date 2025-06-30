@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	html "html/template"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -38,11 +38,11 @@ var schema = Form{
 		Title:  "Хобби",
 		Widget: "lookup",
 	},
-	// {
-	// 	Id:     "city",
-	// 	Title:  "Город",
-	// 	Widget: "lookup",
-	// },
+	{
+		Id:     "city",
+		Title:  "Город",
+		Widget: "lookup",
+	},
 }
 
 type LookupTmplData struct {
@@ -88,7 +88,7 @@ func contains(s, substr string) bool {
 func main() {
 	gofakeit.Seed(111)
 
-	for i := range 20 {
+	for i := range 100 {
 		item := gofakeit.Hobby()
 		lookupAllItems = append(lookupAllItems, item)
 		log.Println(i, item)
@@ -107,21 +107,30 @@ func main() {
     http.ListenAndServe(":8080", r)
 }
 
-func fieldsTempls(f Form) html.HTML {
+func templ (name string, data any) string {
 	var buf bytes.Buffer
 
-	for _, field := range f {
-		if err := templates.ExecuteTemplate(&buf, field.Widget, field); err != nil {
-			panic(err)
-		}
+	if err := templates.ExecuteTemplate(&buf, name, data); err != nil {
+		panic(err)
 	}
 
-	return html.HTML(buf.String())
+	return buf.String()
+}
+
+func fieldsTempls(f Form) string {
+	var buf string
+
+	for _, field := range f {
+
+		buf += templ(field.Widget, field)
+	}
+
+	return buf
 }
 
 func handleForm(w http.ResponseWriter, r *http.Request) {
     err := templates.ExecuteTemplate(w, "layout", struct {
-		Content html.HTML
+		Content string 
 	}{
 		Content: fieldsTempls(schema),
 	})
@@ -133,6 +142,7 @@ func handleForm(w http.ResponseWriter, r *http.Request) {
 
 func handleLookupList(w http.ResponseWriter, r *http.Request) {
 	fieldId := chi.URLParam(r, "field")
+	listId := fmt.Sprintf("%s-lookup-list", fieldId) 
 	store := make(map[string]LookupState) 
 
 	if err := datastar.ReadSignals(r, &store); err != nil {
@@ -145,15 +155,15 @@ func handleLookupList(w http.ResponseWriter, r *http.Request) {
 
 	filteredItems := lookupAllItems 
 
-	// if signals.Value != "" {
-	// 	filteredItems = make([]string, 0)
+	if signals.Value != "" {
+		filteredItems = make([]string, 0)
 
-	// 	for _, item := range lookupAllItems {
-	// 		if contains(item, signals.Value.(string)) {
-	// 			filteredItems = append(filteredItems, item)
-	// 		}
-	// 	}
-	// }
+		for _, item := range lookupAllItems {
+			if contains(item, signals.Value.(string)) {
+				filteredItems = append(filteredItems, item)
+			}
+		}
+	}
 
 	var start, end = startEnd(signals.Offset, signals.Limit, len(filteredItems))
 
@@ -165,24 +175,21 @@ func handleLookupList(w http.ResponseWriter, r *http.Request) {
 		HasMore: len(filteredItems) > end,
 	}
 
-	var buf bytes.Buffer
-
-	if err := templates.ExecuteTemplate(&buf, "lookup_items", itemsData); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	itemsRender := templ("lookup_items", itemsData)
 
 	fmm := datastar.FragmentMergeModeAppend 
 
 	if signals.Offset == 0 {
-		fmm = datastar.FragmentMergeModeInner
+		// FIX  FragmentMergeModeInner работает некорректно с массивом 
+		// fmm = datastar.FragmentMergeModeInner
+		sse.MergeFragments(templ("lookup_list_fix", struct { Id string }{ Id: fieldId }))
 	}
 
 	sse.MergeSignals([]byte(`{` + fieldId + `: {"offset":` + strconv.Itoa(signals.Offset + signals.Limit) + `}}`))
 
 	sse.MergeFragments(
-		buf.String(), 
-		datastar.WithSelector(`#` + fieldId + `-lookup-list`), 
+		itemsRender, 
+		datastar.WithSelector(fmt.Sprintf(`#%s`, listId)), 
 		datastar.WithMergeMode(fmm),
 	)
 
