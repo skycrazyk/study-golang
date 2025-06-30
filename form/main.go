@@ -48,6 +48,7 @@ var schema = Form{
 type LookupTmplData struct {
     List []LookupListItem
 	Id string 
+	HasMore bool
 }
 
 var templates *template.Template
@@ -87,10 +88,12 @@ func contains(s, substr string) bool {
 func main() {
 	gofakeit.Seed(111)
 
-	for range 100 {
-		lookupAllItems = append(lookupAllItems,  gofakeit.Hobby())
+	for i := range 20 {
+		item := gofakeit.Hobby()
+		lookupAllItems = append(lookupAllItems, item)
+		log.Println(i, item)
 	}
-	
+
  	// Загружаем все шаблоны
     templates = template.Must(template.ParseGlob("templates/*.html"))
 
@@ -142,32 +145,24 @@ func handleLookupList(w http.ResponseWriter, r *http.Request) {
 
 	filteredItems := lookupAllItems 
 
-	if signals.Value != "" {
-		filteredItems = make([]string, 0)
+	// if signals.Value != "" {
+	// 	filteredItems = make([]string, 0)
 
-		for _, item := range lookupAllItems {
-			if contains(item, signals.Value.(string)) {
-				filteredItems = append(filteredItems, item)
-			}
-		}
-	}
+	// 	for _, item := range lookupAllItems {
+	// 		if contains(item, signals.Value.(string)) {
+	// 			filteredItems = append(filteredItems, item)
+	// 		}
+	// 	}
+	// }
 
-    start := signals.Offset
-    end := signals.Offset + signals.Limit
-
-    if start > len(filteredItems) {
-        start = len(filteredItems)
-    }
-
-    if end > len(filteredItems) {
-        end = len(filteredItems)
-    }
+	var start, end = startEnd(signals.Offset, signals.Limit, len(filteredItems))
 
     pageList := buildList(filteredItems[start:end])
 
 	itemsData := LookupTmplData{
 		List: pageList,
 		Id: fieldId,
+		HasMore: len(filteredItems) > end,
 	}
 
 	var buf bytes.Buffer
@@ -190,6 +185,12 @@ func handleLookupList(w http.ResponseWriter, r *http.Request) {
 		datastar.WithSelector(`#` + fieldId + `-lookup-list`), 
 		datastar.WithMergeMode(fmm),
 	)
+
+	log.Println("start: ", start, ", ", "end: ", end, ", ", "offset: ", signals.Offset,", ", "mode: ", fmm)
+	
+	for i := range len(itemsData.List) {
+		log.Println("Item", i, ":", itemsData.List[i].Value)
+	}
 }
 
 func handleSubmit(w http.ResponseWriter, r *http.Request) {
@@ -219,4 +220,19 @@ func handleReset(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sse.RemoveFragments("#form-status")
+}
+
+func startEnd(offset int, limit int, total int) (int, int) {
+	start := offset
+	end := offset + limit
+
+	if start > total {
+		start = total
+	}
+
+	if end > total {
+		end = total
+	}
+
+	return start, end
 }

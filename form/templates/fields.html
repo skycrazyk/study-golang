@@ -40,7 +40,7 @@
         <li 
             class="lookup-list-item" 
             data-on-click="${{ $.Id }}.value = '{{ .Value }}'; ${{ $.Id }}.open = false"
-            {{if .IsLast}} 
+            {{if and .IsLast $.HasMore }} 
                 data-on-intersect__once="@get('/fields/{{ $.Id }}/widgets/lookup/list')" 
             {{end}}
         >{{ .Value }}</li>
