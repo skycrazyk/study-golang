@@ -16,11 +16,15 @@
     <fieldset class="fieldset"  data-signals="{ fields: { {{ .Id }}: { value: '', search: '', open: false, offset: 0, limit: 15} }}">
         <legend class="fieldset-legend">{{ .Title }}</legend>
         <div class="relative">
-            <div class="dropdown w-full" data-on-click="evt.target.querySelector('input')?.focus()" tabindex="0" role="button">
-                <div
-                    id="{{ .Id}}-dropdown-button"
-                    class="dropdown-button input relative inline-flex flex-wrap w-full h-auto pr-15 p-2 gap-1"
-                >
+            <div
+                class="dropdown w-full"
+                data-ref="${{ .Id }}.dropdown"
+                data-on-click="evt.target.querySelector('input')?.focus()"
+                tabindex="0"
+                role="button"
+                data-on-click__outside="$fields.{{ .Id }}.search = ''"
+            >
+                <div class="dropdown-button input relative inline-flex flex-wrap w-full h-auto pr-15 p-2 gap-1">
                     <div
                         data-show="$fields.{{ .Id }}.value != ''"
                         class="badge badge-neutral badge-outline badge-sm self-center cursor-default space-x-1 space-y-1"
@@ -31,13 +35,19 @@
                     <input
                         class="grow gap-1 mt-0.5 w-auto min-w-[100px]"
                         data-bind="$fields.{{ .Id }}.search"
-                        data-on-blur="$fields.{{ .Id }}.search = ''"
-                        data-on-keydown="evt.code === 'Enter' && (
-                            $fields.{{ .Id }}.value = $fields.{{ .Id }}.search.trim(),
-                            $fields.{{ .Id }}.search = '',
-                            evt.preventDefault(),
-                            evt.stopPropagation(),
-                            evt.target.blur())"
+                        data-on-keydown="
+                            evt.code === 'Enter' && (
+                                $fields.{{ .Id }}.value = $fields.{{ .Id }}.search.trim(),
+                                $fields.{{ .Id }}.search = '',
+                                evt.preventDefault(),
+                                evt.stopPropagation(),
+                                evt.target.blur()
+                            );
+                            evt.code === 'ArrowDown' && (
+                                ${{ .Id }}.dropdown.querySelector('ul > li').focus(),
+                                evt.preventDefault(),
+                                evt.stopPropagation()
+                            )"
                         data-on-signal-change-fields.{{ .Id }}.search__debounce.700ms="$fields.{{ .Id }}.offset = 0; @get('/fields/{{ .Id }}/widgets/lookup/list')"
                     />
 
@@ -61,7 +71,21 @@
 {{ define "lookup_items" }}
     {{ range .List }}
         <li
+            tabindex="0"
+            class="focus:bg-gray-200 outline-none rounded-sm"
             data-on-click="$fields.{{ $.Id }}.value = '{{ .Value }}'; $fields.{{ $.Id }}.search = ''; document.activeElement.blur();"
+            data-on-keydown="
+                evt.code === 'Enter' && (
+                    $fields.{{ $.Id }}.value = '{{ .Value }}',
+                    $fields.{{ $.Id }}.search = '',
+                    evt.target.blur()
+                );
+                evt.code === 'ArrowUp' && evt.target.previousElementSibling?.focus();
+                evt.code === 'ArrowDown' && evt.target.nextElementSibling?.focus();
+                evt.code === 'Enter' || evt.code === 'ArrowUp' || evt.code === 'ArrowDown' && (
+                    evt.preventDefault(),
+                    evt.stopPropagation()
+                )"
             {{if and .IsLast $.HasMore }} 
                 data-on-intersect__once="@get('/fields/{{ $.Id }}/widgets/lookup/list')" 
             {{end}}
