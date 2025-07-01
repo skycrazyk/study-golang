@@ -15,39 +15,42 @@
 {{ define "lookup" }}
     <fieldset class="fieldset"  data-signals="{ fields: { {{ .Id }}: { value: '', search: '', open: false, offset: 0, limit: 15} }}">
         <legend class="fieldset-legend">{{ .Title }}</legend>
-        <div class="dropdown w-full" data-on-click="evt.target.querySelector('input')?.focus()" tabindex="0" role="button">
-            <div
-                id="{{ .Id}}-dropdown-button"
-                class="dropdown-button input relative inline-flex flex-wrap w-full h-auto pr-15 p-2 gap-1"
-            >
+        <div class="relative">
+            <div class="dropdown w-full" data-on-click="evt.target.querySelector('input')?.focus()" tabindex="0" role="button">
                 <div
-                    data-show="$fields.{{ .Id }}.value != ''"
-                    class="badge badge-neutral badge-outline badge-sm self-center cursor-default space-x-1 space-y-1"
+                    id="{{ .Id}}-dropdown-button"
+                    class="dropdown-button input relative inline-flex flex-wrap w-full h-auto pr-15 p-2 gap-1"
                 >
-                    <span class="m-0" data-text="$fields.{{ .Id }}.value"></span>
-                    <div data-on-click__stop="@post('/remove')" class="w-4 h-4 p-0.5 cursor-pointer">
-                        <svg class="h-full" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"><path d="M20.7457 3.32851C20.3552 2.93798 19.722 2.93798 19.3315 3.32851L12.0371 10.6229L4.74275 3.32851C4.35223 2.93798 3.71906 2.93798 3.32854 3.32851C2.93801 3.71903 2.93801 4.3522 3.32854 4.74272L10.6229 12.0371L3.32856 19.3314C2.93803 19.722 2.93803 20.3551 3.32856 20.7457C3.71908 21.1362 4.35225 21.1362 4.74277 20.7457L12.0371 13.4513L19.3315 20.7457C19.722 21.1362 20.3552 21.1362 20.7457 20.7457C21.1362 20.3551 21.1362 19.722 20.7457 19.3315L13.4513 12.0371L20.7457 4.74272C21.1362 4.3522 21.1362 3.71903 20.7457 3.32851Z" fill="currentColor" /></svg>
+                    <div
+                        data-show="$fields.{{ .Id }}.value != ''"
+                        class="badge badge-neutral badge-outline badge-sm self-center cursor-default space-x-1 space-y-1"
+                    >
+                        <span class="m-0" data-text="$fields.{{ .Id }}.value"></span>
                     </div>
+
+                    <input
+                        class="grow gap-1 mt-0.5 w-auto min-w-[100px]"
+                        data-bind="$fields.{{ .Id }}.search"
+                        data-on-blur="$fields.{{ .Id }}.search = ''"
+                        data-on-keydown="evt.code === 'Enter' && (
+                            $fields.{{ .Id }}.value = $fields.{{ .Id }}.search.trim(),
+                            $fields.{{ .Id }}.search = '',
+                            evt.preventDefault(),
+                            evt.stopPropagation(),
+                            evt.target.blur())"
+                        data-on-signal-change-fields.{{ .Id }}.search__debounce.700ms="$fields.{{ .Id }}.offset = 0; @get('/fields/{{ .Id }}/widgets/lookup/list')"
+                    />
+
                 </div>
-
-                <input
-                    class="grow gap-1 mt-0.5 w-auto min-w-[100px]"
-                    data-bind="$fields.{{ .Id }}.search"
-                    data-on-blur="$fields.{{ .Id }}.search = ''"
-                    data-on-keydown="evt.code === 'Enter' && (
-                        $fields.{{ .Id }}.value = $fields.{{ .Id }}.search.trim(),
-                        $fields.{{ .Id }}.search = '', 
-                        evt.preventDefault(), 
-                        evt.stopPropagation(), 
-                        evt.target.blur())"
-                    data-on-signal-change-fields.{{ .Id }}.search__debounce.700ms="$fields.{{ .Id }}.offset = 0; @get('/fields/{{ .Id }}/widgets/lookup/list')"
-                />
-
-                <span class="btn btn-xs absolute right-2">
-                    Clear
-                </span>
+                {{ template "lookup_list" . }}
             </div>
-            {{ template "lookup_list" . }}
+            <span
+                data-show="$fields.{{ .Id }}.value != ''"
+                data-on-click="@post('/fields/{{ .Id }}/reset')"
+                class="bg-gray-200 hover:bg-gray-300 transition-colors p-1 rounded-[50%] absolute right-2 top-2 cursor-pointer"
+            >
+                <svg class="w-3 h-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"><path d="M20.7457 3.32851C20.3552 2.93798 19.722 2.93798 19.3315 3.32851L12.0371 10.6229L4.74275 3.32851C4.35223 2.93798 3.71906 2.93798 3.32854 3.32851C2.93801 3.71903 2.93801 4.3522 3.32854 4.74272L10.6229 12.0371L3.32856 19.3314C2.93803 19.722 2.93803 20.3551 3.32856 20.7457C3.71908 21.1362 4.35225 21.1362 4.74277 20.7457L12.0371 13.4513L19.3315 20.7457C19.722 21.1362 20.3552 21.1362 20.7457 20.7457C21.1362 20.3551 21.1362 19.722 20.7457 19.3315L13.4513 12.0371L20.7457 4.74272C21.1362 4.3522 21.1362 3.71903 20.7457 3.32851Z" fill="currentColor" /></svg>
+            </span>
         </div>
         {{ if .Description }}
             <p class="label">{{ .Description }}</p>

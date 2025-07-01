@@ -101,6 +101,7 @@ func main() {
     r := chi.NewRouter()
     r.Get("/", handleForm)
 	r.Get("/fields/{field}/widgets/lookup/list", handleLookupList)
+	r.Post("/fields/{field}/reset", handleReset)
 	r.Put("/submit", handleSubmit)
 	r.Post("/reset", handleReset)
 
@@ -230,11 +231,16 @@ func handleSubmit(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleReset(w http.ResponseWriter, r *http.Request) {
+    fieldId := chi.URLParam(r, "field")
 	sse := datastar.NewSSE(w, r)
 
-	for _, field := range schema {
-		sse.MergeSignals([]byte(`{ fields: {"` + field.Id + `": {value: ''}}}`))
-	}
+    if fieldId == "" {
+        for _, field := range schema {
+            sse.MergeSignals([]byte(`{ fields: {"` + field.Id + `": {value: ''}}}`))
+        }
+    } else {
+        sse.MergeSignals([]byte(`{ fields: {"` + fieldId + `": {value: ''}}}`))
+    }
 
 	sse.RemoveFragments("#form-status")
 }
