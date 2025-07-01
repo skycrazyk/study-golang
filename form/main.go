@@ -17,6 +17,7 @@ import (
 type Field struct {
 	Id string
 	Title string
+	Description string
 	Widget string
 }
 
@@ -181,6 +182,7 @@ func handleLookupList(w http.ResponseWriter, r *http.Request) {
 
 	if signals.Offset == 0 {
 		// FIX  FragmentMergeModeInner работает некорректно с массивом 
+		// поэтому очищаем список с помощью передачи пустого элемента
 		// fmm = datastar.FragmentMergeModeInner
 		sse.MergeFragments(templ("lookup_list_fix", struct { Id string }{ Id: fieldId }))
 	}
