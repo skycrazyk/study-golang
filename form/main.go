@@ -156,11 +156,11 @@ func handleLookupList(w http.ResponseWriter, r *http.Request) {
 
 	filteredItems := lookupAllItems 
 
-	if signals.Value != "" {
+	if signals.Search != "" {
 		filteredItems = make([]string, 0)
 
 		for _, item := range lookupAllItems {
-			if contains(item, signals.Value.(string)) {
+			if contains(item, signals.Search) {
 				filteredItems = append(filteredItems, item)
 			}
 		}
