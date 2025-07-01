@@ -1,0 +1,42 @@
+# Бинарные файлы
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+# Сборочные артефакты
+/build/
+/bin/
+/out/
+
+# Кэш Go
+/pkg/
+/vendor/
+
+# Go модульный кэш (если используется go.work)
+*.mod
+*.sum
+
+# Кэш тестов
+*.coverprofile
+*.testresult
+*.prof
+
+# IDE / редакторы
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Логи и временные файлы
+*.log
+*.tmp
+*.bak
+
+# Операционная система
+.DS_Store
+Thumbs.db
+
+/tmp/

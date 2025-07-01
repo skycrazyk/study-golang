@@ -2,10 +2,12 @@ package main
 
 import (
 	"bytes"
-	html "html/template"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
+	"strings"
 	"text/template"
 
 	"github.com/brianvoe/gofakeit/v6"
@@ -16,6 +18,7 @@ import (
 type Field struct {
 	Id string
 	Title string
+	Description string
 	Widget string
 }
 
@@ -47,6 +50,7 @@ var schema = Form{
 type LookupTmplData struct {
     List []LookupListItem
 	Id string 
+	HasMore bool
 }
 
 var templates *template.Template
@@ -64,7 +68,6 @@ type LookupListItem struct {
 	Value  string
 	IsLast bool
 }
-
 func buildList(items []string) []LookupListItem {
 	result := make([]LookupListItem, len(items))
 
@@ -78,41 +81,65 @@ func buildList(items []string) []LookupListItem {
 	return result
 }
 
+// contains returns true if substr is found in s (case-insensitive)
+func contains(s, substr string) bool {
+	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
+}
+
+
 func main() {
 	gofakeit.Seed(111)
 
-	for range 100 {
-		lookupAllItems = append(lookupAllItems,  gofakeit.Hobby())
+	for i := range 100 {
+		item := gofakeit.Hobby()
+		lookupAllItems = append(lookupAllItems, item)
+		log.Println(i, item)
 	}
-	
+
  	// Загружаем все шаблоны
     templates = template.Must(template.ParseGlob("templates/*.html"))
 
     r := chi.NewRouter()
     r.Get("/", handleForm)
 	r.Get("/fields/{field}/widgets/lookup/list", handleLookupList)
+	r.Post("/fields/{field}/reset", handleReset)
 	r.Put("/submit", handleSubmit)
 	r.Post("/reset", handleReset)
 
-    log.Println("Сервер запущен на http://localhost:8080")
-    http.ListenAndServe(":8080", r)
-}
+	port := os.Getenv("PORT")
 
-func fieldsTempls(f Form) html.HTML {
-	var buf bytes.Buffer
-
-	for _, field := range f {
-		if err := templates.ExecuteTemplate(&buf, field.Widget, field); err != nil {
-			panic(err)
-		}
+	if port == "" {
+		port = "8080" // Значение по умолчанию
 	}
 
-	return html.HTML(buf.String())
+    log.Println("Сервер запущен на http://localhost:" + port)
+    http.ListenAndServe(":" + port, r)
+}
+
+func templ (name string, data any) string {
+	var buf bytes.Buffer
+
+	if err := templates.ExecuteTemplate(&buf, name, data); err != nil {
+		panic(err)
+	}
+
+	return buf.String()
+}
+
+func fieldsTempls(f Form) string {
+	var buf string
+
+	for _, field := range f {
+
+		buf += templ(field.Widget, field)
+	}
+
+	return buf
 }
 
 func handleForm(w http.ResponseWriter, r *http.Request) {
     err := templates.ExecuteTemplate(w, "layout", struct {
-		Content html.HTML
+		Content string 
 	}{
 		Content: fieldsTempls(schema),
 	})
@@ -124,49 +151,71 @@ func handleForm(w http.ResponseWriter, r *http.Request) {
 
 func handleLookupList(w http.ResponseWriter, r *http.Request) {
 	fieldId := chi.URLParam(r, "field")
-	store := make(map[string]LookupState) 
+	listId := fmt.Sprintf("%s-lookup-list", fieldId) 
 
-	if err := datastar.ReadSignals(r, &store); err != nil {
+
+	appSignals := struct {
+		Fields map[string]LookupState `json:"fields,omitempty"`
+	}{
+		Fields: make(map[string]LookupState),
+	}
+
+	if err := datastar.ReadSignals(r, &appSignals); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	signals := store[fieldId]
+	log.Println("Received app signals:", appSignals)
 
+	lookupSignals := appSignals.Fields[fieldId]
 	sse := datastar.NewSSE(w, r)
 
-    start := signals.Offset
-    end := signals.Offset + signals.Limit
+	filteredItems := lookupAllItems 
 
-    if start > len(lookupAllItems) {
-        start = len(lookupAllItems)
-    }
+	if lookupSignals.Search != "" {
+		filteredItems = make([]string, 0)
 
-    if end > len(lookupAllItems) {
-        end = len(lookupAllItems)
-    }
+		for _, item := range lookupAllItems {
+			if contains(item, lookupSignals.Search) {
+				filteredItems = append(filteredItems, item)
+			}
+		}
+	}
 
-    pageList := buildList(lookupAllItems[start:end])
+	var start, end = startEnd(lookupSignals.Offset, lookupSignals.Limit, len(filteredItems))
+
+    pageList := buildList(filteredItems[start:end])
 
 	itemsData := LookupTmplData{
 		List: pageList,
 		Id: fieldId,
+		HasMore: len(filteredItems) > end,
 	}
 
-	var buf bytes.Buffer
+	itemsRender := templ("lookup_items", itemsData)
 
-	if err := templates.ExecuteTemplate(&buf, "lookup_items", itemsData); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	fmm := datastar.FragmentMergeModeAppend 
+
+	if lookupSignals.Offset == 0 {
+		// FIX  FragmentMergeModeInner работает некорректно с массивом 
+		// поэтому очищаем список с помощью передачи пустого элемента
+		// fmm = datastar.FragmentMergeModeInner
+		sse.MergeFragments(templ("lookup_list_fix", struct { Id string }{ Id: fieldId }))
 	}
 
-	sse.MergeSignals([]byte(`{` + fieldId + `: {"offset":` + strconv.Itoa(signals.Offset + signals.Limit) + `}}`))
+	sse.MergeSignals([]byte(`{ fields: {` + fieldId + `: {"offset":` + strconv.Itoa(lookupSignals.Offset + lookupSignals.Limit) + `}}}`))
 
 	sse.MergeFragments(
-		buf.String(), 
-		datastar.WithSelector(`#` + fieldId + `-lookup-list`), 
-		datastar.WithMergeMode(datastar.FragmentMergeModeAppend),
+		itemsRender, 
+		datastar.WithSelector(fmt.Sprintf(`#%s`, listId)), 
+		datastar.WithMergeMode(fmm),
 	)
+
+	log.Println("start: ", start, ", ", "end: ", end, ", ", "offset: ", lookupSignals.Offset,", ", "mode: ", fmm)
+	
+	for i := range len(itemsData.List) {
+		log.Println("Item", i, ":", itemsData.List[i].Value)
+	}
 }
 
 func handleSubmit(w http.ResponseWriter, r *http.Request) {
@@ -189,11 +238,31 @@ func handleSubmit(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleReset(w http.ResponseWriter, r *http.Request) {
+    fieldId := chi.URLParam(r, "field")
 	sse := datastar.NewSSE(w, r)
 
-	for _, field := range schema {
-		sse.MergeSignals([]byte(`{"` + field.Id + `": {value: ''}}`))
-	}
+    if fieldId == "" {
+        for _, field := range schema {
+            sse.MergeSignals([]byte(`{ fields: {"` + field.Id + `": {value: ''}}}`))
+        }
+    } else {
+        sse.MergeSignals([]byte(`{ fields: {"` + fieldId + `": {value: ''}}}`))
+    }
 
 	sse.RemoveFragments("#form-status")
+}
+
+func startEnd(offset int, limit int, total int) (int, int) {
+	start := offset
+	end := offset + limit
+
+	if start > total {
+		start = total
+	}
+
+	if end > total {
+		end = total
+	}
+
+	return start, end
 }

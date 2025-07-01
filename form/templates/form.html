@@ -1,8 +1,11 @@
 {{ define "form" }}
 <fieldset class="fieldset bg-base-200 border-base-300 rounded-box w-xl border p-4">
-  <form data-on-submit="@put('/submit')" id="form">
+  <form 
+    id="form" 
+    data-on-submit="@put('/submit')" 
+  >
     {{ .Content }}
-    <p class="mt-4">
+    <p class="mt-4" data-on-signal-change-fields.*.value__debounce.1s="console.log('!!!Introspect!!!')">
       <button class="btn btn-primary" type="submit">Submit</button>
       <button class="btn" type="button" data-on-click__stop="@post('/reset')">Reset</button>
     </p>
