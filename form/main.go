@@ -144,29 +144,37 @@ func handleForm(w http.ResponseWriter, r *http.Request) {
 func handleLookupList(w http.ResponseWriter, r *http.Request) {
 	fieldId := chi.URLParam(r, "field")
 	listId := fmt.Sprintf("%s-lookup-list", fieldId) 
-	store := make(map[string]LookupState) 
 
-	if err := datastar.ReadSignals(r, &store); err != nil {
+
+	appSignals := struct {
+		Fields map[string]LookupState `json:"fields,omitempty"`
+	}{
+		Fields: make(map[string]LookupState),
+	}
+
+	if err := datastar.ReadSignals(r, &appSignals); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	signals := store[fieldId]
+	log.Println("Received app signals:", appSignals)
+
+	lookupSignals := appSignals.Fields[fieldId]
 	sse := datastar.NewSSE(w, r)
 
 	filteredItems := lookupAllItems 
 
-	if signals.Search != "" {
+	if lookupSignals.Search != "" {
 		filteredItems = make([]string, 0)
 
 		for _, item := range lookupAllItems {
-			if contains(item, signals.Search) {
+			if contains(item, lookupSignals.Search) {
 				filteredItems = append(filteredItems, item)
 			}
 		}
 	}
 
-	var start, end = startEnd(signals.Offset, signals.Limit, len(filteredItems))
+	var start, end = startEnd(lookupSignals.Offset, lookupSignals.Limit, len(filteredItems))
 
     pageList := buildList(filteredItems[start:end])
 
@@ -180,14 +188,14 @@ func handleLookupList(w http.ResponseWriter, r *http.Request) {
 
 	fmm := datastar.FragmentMergeModeAppend 
 
-	if signals.Offset == 0 {
+	if lookupSignals.Offset == 0 {
 		// FIX  FragmentMergeModeInner работает некорректно с массивом 
 		// поэтому очищаем список с помощью передачи пустого элемента
 		// fmm = datastar.FragmentMergeModeInner
 		sse.MergeFragments(templ("lookup_list_fix", struct { Id string }{ Id: fieldId }))
 	}
 
-	sse.MergeSignals([]byte(`{` + fieldId + `: {"offset":` + strconv.Itoa(signals.Offset + signals.Limit) + `}}`))
+	sse.MergeSignals([]byte(`{ fields: {` + fieldId + `: {"offset":` + strconv.Itoa(lookupSignals.Offset + lookupSignals.Limit) + `}}}`))
 
 	sse.MergeFragments(
 		itemsRender, 
@@ -195,7 +203,7 @@ func handleLookupList(w http.ResponseWriter, r *http.Request) {
 		datastar.WithMergeMode(fmm),
 	)
 
-	log.Println("start: ", start, ", ", "end: ", end, ", ", "offset: ", signals.Offset,", ", "mode: ", fmm)
+	log.Println("start: ", start, ", ", "end: ", end, ", ", "offset: ", lookupSignals.Offset,", ", "mode: ", fmm)
 	
 	for i := range len(itemsData.List) {
 		log.Println("Item", i, ":", itemsData.List[i].Value)
@@ -225,7 +233,7 @@ func handleReset(w http.ResponseWriter, r *http.Request) {
 	sse := datastar.NewSSE(w, r)
 
 	for _, field := range schema {
-		sse.MergeSignals([]byte(`{"` + field.Id + `": {value: ''}}`))
+		sse.MergeSignals([]byte(`{ fields: {"` + field.Id + `": {value: ''}}}`))
 	}
 
 	sse.RemoveFragments("#form-status")
