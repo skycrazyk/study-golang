@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"text/template"
@@ -105,8 +106,14 @@ func main() {
 	r.Put("/submit", handleSubmit)
 	r.Post("/reset", handleReset)
 
-    log.Println("Сервер запущен на http://localhost:8080")
-    http.ListenAndServe(":8080", r)
+	port := os.Getenv("PORT")
+
+	if port == "" {
+		port = "8080" // Значение по умолчанию
+	}
+
+    log.Println("Сервер запущен на http://localhost:" + port)
+    http.ListenAndServe(":" + port, r)
 }
 
 func templ (name string, data any) string {
