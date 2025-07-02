@@ -17,11 +17,10 @@
         <legend class="fieldset-legend">{{ .Title }}</legend>
         <div class="relative">
             <div
-                class="dropdown w-full"
-                data-ref="${{ .Id }}.dropdown"
-                data-on-click="evt.target.querySelector('input')?.focus()"
                 tabindex="0"
                 role="button"
+                class="dropdown w-full"
+                data-on-click="evt.target.querySelector('input')?.focus()"
                 data-on-click__outside="$fields.{{ .Id }}.search = ''"
             >
                 <div class="dropdown-button input relative inline-flex flex-wrap w-full h-auto pr-15 p-2 gap-1">
@@ -39,12 +38,15 @@
                             evt.code === 'Enter' && (
                                 $fields.{{ .Id }}.value = $fields.{{ .Id }}.search.trim(),
                                 $fields.{{ .Id }}.search = '',
-                                evt.preventDefault(),
-                                evt.stopPropagation(),
                                 evt.target.blur()
                             );
-                            evt.code === 'ArrowDown' && (
-                                ${{ .Id }}.dropdown.querySelector('ul > li').focus(),
+                            evt.code === 'Escape' && (
+                                $fields.{{ .Id }}.search = '',
+                                evt.target.blur()
+                            );
+                            evt.code === 'ArrowUp' && evt.target.closest('.dropdown')?.querySelector('ul > li:last-of-type')?.focus();
+                            evt.code === 'ArrowDown' && evt.target.closest('.dropdown')?.querySelector('ul > li:first-of-type')?.focus();
+                            ['Enter', 'Escape', 'ArrowUp', 'ArrowDown'].includes(evt.code) && (
                                 evt.preventDefault(),
                                 evt.stopPropagation()
                             )"
@@ -80,9 +82,17 @@
                     $fields.{{ $.Id }}.search = '',
                     evt.target.blur()
                 );
-                evt.code === 'ArrowUp' && evt.target.previousElementSibling?.focus();
-                evt.code === 'ArrowDown' && evt.target.nextElementSibling?.focus();
-                evt.code === 'Enter' || evt.code === 'ArrowUp' || evt.code === 'ArrowDown' && (
+                evt.code === 'Escape' && (
+                    $fields.{{ $.Id }}.search = '',
+                    evt.target.blur()
+                );
+                evt.code === 'ArrowUp' && (
+                    evt.target.previousElementSibling ? evt.target.previousElementSibling.focus() : evt.target.parentElement.querySelector('li:last-of-type')?.focus()
+                );
+                evt.code === 'ArrowDown' && (
+                    evt.target.nextElementSibling ? evt.target.nextElementSibling.focus() : evt.target.parentElement.querySelector('li:first-of-type')?.focus()
+                );
+                ['Enter', 'Escape', 'ArrowUp', 'ArrowDown'].includes(evt.code) && (
                     evt.preventDefault(),
                     evt.stopPropagation()
                 )"
