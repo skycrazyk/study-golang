@@ -35,24 +35,19 @@
             <input
                 class="grow gap-1 mt-0.5 w-auto min-w-[100px]"
                 data-bind="$fields.{{ .Id }}.search"
-                data-on-blur="$fields.{{ .Id }}.search = ''"
+                data-on-blur="!document.querySelector('#{{ .Id }}-lookup-dropdown:popover-open') && ($fields.{{ .Id }}.search = '')"
                 data-on-keydown="
+                    !document.querySelector('#{{ .Id }}-lookup-dropdown:popover-open') && evt.code !== 'Escape' && document.querySelector('#{{ .Id }}-lookup-dropdown')?.showPopover();
                     evt.code === 'Enter' && (
                         $fields.{{ .Id }}.value = $fields.{{ .Id }}.search.trim(),
-                        $fields.{{ .Id }}.search = '',
-                        document.querySelector('#{{ .Id }}-lookup-dropdown')?.hidePopover()
-                    );
-                    evt.code === 'Escape' && (
                         $fields.{{ .Id }}.search = '',
                         document.querySelector('#{{ .Id }}-lookup-dropdown')?.hidePopover()
                     );
                     evt.code === 'Backspace' && $fields.{{ .Id }}.search === '' && $fields.{{ .Id }}.value !== '' && @post('/fields/{{ .Id }}/reset');
                     evt.code === 'ArrowUp' && evt.target.closest('.fieldset')?.querySelector('ul > li:last-of-type')?.focus();
                     evt.code === 'ArrowDown' && evt.target.closest('.fieldset')?.querySelector('ul > li:first-of-type')?.focus();
-                    ['Enter', 'Escape', 'ArrowUp', 'ArrowDown'].includes(evt.code) && (
-                        evt.preventDefault(),
-                        evt.stopPropagation()
-                    )"
+                    ['Enter', 'ArrowUp', 'ArrowDown'].includes(evt.code) && (evt.preventDefault(), evt.stopPropagation());
+                "
                 data-on-signal-change-fields.{{ .Id }}.search__debounce.700ms="$fields.{{ .Id }}.offset = 0; @get('/fields/{{ .Id }}/widgets/lookup/list')"
             />
 
