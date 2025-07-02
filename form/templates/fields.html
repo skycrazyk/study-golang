@@ -1,69 +1,70 @@
 {{ define "input_string" }}
-    <fieldset class="fieldset"  data-signals="{ fields: { {{ .Id }}: { value: '' } } }">
+    <fieldset class="fieldset"  data-signals="{ fields: { {{ .Id }}: { value: ''  } } }">
         <legend class="fieldset-legend">{{ .Title }}</legend>
         <input data-bind="$fields.{{ .Id }}.value" class="input w-full" />
     </fieldset>
 {{ end }}
 
 {{ define "input_number" }}
-    <fieldset class="fieldset"  data-signals="{ fields: { {{ .Id }}: { value: undefined } } }">
+    <fieldset class="fieldset"  data-signals="{ fields: { {{ .Id }}: { value: '' } } }">
         <legend class="fieldset-legend">{{ .Title }}</legend>
         <input data-bind="$fields.{{ .Id }}.value" type="number" class="input w-full" />
     </fieldset>
 {{ end }}
 
 {{ define "lookup" }}
-    <fieldset class="fieldset"  data-signals="{ fields: { {{ .Id }}: { value: '', search: '', open: false, offset: 0, limit: 15} }}">
+    <fieldset 
+        class="fieldset"  
+        data-signals="{ fields: { {{ .Id }}: { value: '', search: '', open: false, offset: 0, limit: 15, abort: undefined} }}" 
+        data-on-signal-change-fields.{{ .Id }}.value="@post('/fields/{{ .Id }}/widgets/{{ .Widget }}/change')"
+    >
         <legend class="fieldset-legend">{{ .Title }}</legend>
-        <div class="relative">
+        <button
+            type="button"
+            style="anchor-name:--{{ .Id }}-lookup-anchor"
+            class="input relative inline-flex flex-wrap w-full h-auto pr-15 p-2 gap-1"
+            data-on-click="evt.target.querySelector('input')?.focus(); document.querySelector('#{{ .Id }}-lookup-dropdown')?.togglePopover()"
+        >
             <div
-                tabindex="0"
-                role="button"
-                class="dropdown w-full"
-                data-on-click="evt.target.querySelector('input')?.focus()"
-                data-on-click__outside="$fields.{{ .Id }}.search = ''"
+                data-show="$fields.{{ .Id }}.value != ''"
+                class="badge badge-neutral badge-outline badge-sm self-center cursor-default space-x-1 space-y-1"
             >
-                <div class="dropdown-button input relative inline-flex flex-wrap w-full h-auto pr-15 p-2 gap-1">
-                    <div
-                        data-show="$fields.{{ .Id }}.value != ''"
-                        class="badge badge-neutral badge-outline badge-sm self-center cursor-default space-x-1 space-y-1"
-                    >
-                        <span class="m-0" data-text="$fields.{{ .Id }}.value"></span>
-                    </div>
-
-                    <input
-                        class="grow gap-1 mt-0.5 w-auto min-w-[100px]"
-                        data-bind="$fields.{{ .Id }}.search"
-                        data-on-keydown="
-                            evt.code === 'Enter' && (
-                                $fields.{{ .Id }}.value = $fields.{{ .Id }}.search.trim(),
-                                $fields.{{ .Id }}.search = '',
-                                evt.target.blur()
-                            );
-                            evt.code === 'Escape' && (
-                                $fields.{{ .Id }}.search = '',
-                                evt.target.blur()
-                            );
-                            evt.code === 'ArrowUp' && evt.target.closest('.dropdown')?.querySelector('ul > li:last-of-type')?.focus();
-                            evt.code === 'ArrowDown' && evt.target.closest('.dropdown')?.querySelector('ul > li:first-of-type')?.focus();
-                            ['Enter', 'Escape', 'ArrowUp', 'ArrowDown'].includes(evt.code) && (
-                                evt.preventDefault(),
-                                evt.stopPropagation()
-                            )"
-                        data-on-signal-change-fields.{{ .Id }}.search__debounce.700ms="$fields.{{ .Id }}.offset = 0; @get('/fields/{{ .Id }}/widgets/lookup/list')"
-                    />
-
-                </div>
-                {{ template "lookup_list" . }}
+                <span class="m-0" data-text="$fields.{{ .Id }}.value"></span>
             </div>
+
+            <input
+                class="grow gap-1 mt-0.5 w-auto min-w-[100px]"
+                data-bind="$fields.{{ .Id }}.search"
+                data-on-blur="$fields.{{ .Id }}.search = ''"
+                data-on-keydown="
+                    evt.code === 'Enter' && (
+                        $fields.{{ .Id }}.value = $fields.{{ .Id }}.search.trim(),
+                        $fields.{{ .Id }}.search = '',
+                        document.querySelector('#{{ .Id }}-lookup-dropdown')?.hidePopover()
+                    );
+                    evt.code === 'Escape' && (
+                        $fields.{{ .Id }}.search = '',
+                        document.querySelector('#{{ .Id }}-lookup-dropdown')?.hidePopover()
+                    );
+                    evt.code === 'Backspace' && $fields.{{ .Id }}.search === '' && $fields.{{ .Id }}.value !== '' && @post('/fields/{{ .Id }}/reset');
+                    evt.code === 'ArrowUp' && evt.target.closest('.fieldset')?.querySelector('ul > li:last-of-type')?.focus();
+                    evt.code === 'ArrowDown' && evt.target.closest('.fieldset')?.querySelector('ul > li:first-of-type')?.focus();
+                    ['Enter', 'Escape', 'ArrowUp', 'ArrowDown'].includes(evt.code) && (
+                        evt.preventDefault(),
+                        evt.stopPropagation()
+                    )"
+                data-on-signal-change-fields.{{ .Id }}.search__debounce.700ms="$fields.{{ .Id }}.offset = 0; @get('/fields/{{ .Id }}/widgets/lookup/list')"
+            />
+
             <span
                 data-show="$fields.{{ .Id }}.value != ''"
-                data-on-click="@post('/fields/{{ .Id }}/reset')"
+                data-on-click__stop="@post('/fields/{{ .Id }}/reset')"
                 class="bg-gray-200 hover:bg-gray-300 transition-colors p-1 rounded-[50%] absolute right-2 top-2 cursor-pointer z-1"
             >
                 <svg class="w-3 h-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"><path d="M20.7457 3.32851C20.3552 2.93798 19.722 2.93798 19.3315 3.32851L12.0371 10.6229L4.74275 3.32851C4.35223 2.93798 3.71906 2.93798 3.32854 3.32851C2.93801 3.71903 2.93801 4.3522 3.32854 4.74272L10.6229 12.0371L3.32856 19.3314C2.93803 19.722 2.93803 20.3551 3.32856 20.7457C3.71908 21.1362 4.35225 21.1362 4.74277 20.7457L12.0371 13.4513L19.3315 20.7457C19.722 21.1362 20.3552 21.1362 20.7457 20.7457C21.1362 20.3551 21.1362 19.722 20.7457 19.3315L13.4513 12.0371L20.7457 4.74272C21.1362 4.3522 21.1362 3.71903 20.7457 3.32851Z" fill="currentColor" /></svg>
             </span>
-        </div>
+        </button>
+        {{ template "lookup_list" . }}
         {{ if .Description }}
             <p class="label">{{ .Description }}</p>
         {{ end }}
@@ -73,18 +74,19 @@
 {{ define "lookup_items" }}
     {{ range .List }}
         <li
-            tabindex="0"
+            tabindex="{{ .Index }}"
+            role="option"
             class="focus:bg-gray-200 outline-none rounded-sm"
-            data-on-click="$fields.{{ $.Id }}.value = '{{ .Value }}'; $fields.{{ $.Id }}.search = ''; document.activeElement.blur();"
+            data-on-click="$fields.{{ $.Id }}.value = '{{ .Value }}'; $fields.{{ $.Id }}.search = ''; document.querySelector('#{{ $.Id }}-lookup-dropdown')?.hidePopover();"
             data-on-keydown="
                 evt.code === 'Enter' && (
                     $fields.{{ $.Id }}.value = '{{ .Value }}',
                     $fields.{{ $.Id }}.search = '',
-                    evt.target.blur()
+                    document.querySelector('#{{ $.Id }}-lookup-dropdown')?.hidePopover()
                 );
                 evt.code === 'Escape' && (
                     $fields.{{ $.Id }}.search = '',
-                    evt.target.blur()
+                    document.querySelector('#{{ $.Id }}-lookup-dropdown')?.hidePopover()
                 );
                 evt.code === 'ArrowUp' && (
                     evt.target.previousElementSibling ? evt.target.previousElementSibling.focus() : evt.target.parentElement.querySelector('li:last-of-type')?.focus()
@@ -106,24 +108,39 @@
 {{ end }}
 
 {{ define "lookup_list" }}
-    <ul
-        id="{{ .Id }}-lookup-list"
-        tabindex="0"
-        data-on-intersect__once="@get('/fields/{{ .Id }}/widgets/lookup/list')"
-        class="dropdown-content menu max-h-48 bg-base-100 rounded-box z-1 p-2 shadow-sm overflow-y-auto flex-nowrap"
-    ></ul>
+    <div 
+        popover
+        style="position-anchor:--{{ .Id }}-lookup-anchor"
+        class="dropdown max-h-48 bg-base-100 rounded-box z-1 shadow-sm overflow-y-auto flex-nowrap"
+        id="{{ .Id }}-lookup-dropdown"
+    >
+        <ul
+            id="{{ .Id }}-lookup-list"
+            class="menu"
+            data-on-intersect__once="@get('/fields/{{ .Id }}/widgets/lookup/list')"
+        >
+        </ul>
+    </div>
 {{ end }}
 
 {{ define "lookup_list_fix" }}
-    <ul
-        id="{{ .Id }}-lookup-list"
-        class="dropdown-content menu max-h-48 bg-base-100 rounded-box z-1 p-2 shadow-sm overflow-y-auto flex-nowrap"
-    ></ul>
+    <div 
+        popover
+        style="position-anchor:--{{ .Id }}-lookup-anchor"
+        class="dropdown max-h-48 bg-base-100 rounded-box z-1 shadow-sm overflow-y-auto flex-nowrap"
+        id="{{ .Id }}-lookup-dropdown"
+    >
+        <ul
+            id="{{ .Id }}-lookup-list"
+            class="menu"
+        >
+        </ul>
+    </div>
 {{ end }}
 
 {{ define "tags" }}
     {{ range .Tags }}
-        <div class="badge badge-neutral badge-outline badge-sm mt-0.5 mb-0.5 mr-1 pl-2 pr-1 self-center cursor-default">
+        <div class="badge badge-neutral badge-outline badge-sm self-center cursor-default space-x-1 space-y-1">
             {{ .Value }}
             <div data-on-click__stop="@post('/remove')" class="w-4 h-4 rounded-[50%] btn-xs p-0.5 cursor-pointer">
                 <svg class="h-full" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"><path d="M20.7457 3.32851C20.3552 2.93798 19.722 2.93798 19.3315 3.32851L12.0371 10.6229L4.74275 3.32851C4.35223 2.93798 3.71906 2.93798 3.32854 3.32851C2.93801 3.71903 2.93801 4.3522 3.32854 4.74272L10.6229 12.0371L3.32856 19.3314C2.93803 19.722 2.93803 20.3551 3.32856 20.7457C3.71908 21.1362 4.35225 21.1362 4.74277 20.7457L12.0371 13.4513L19.3315 20.7457C19.722 21.1362 20.3552 21.1362 20.7457 20.7457C21.1362 20.3551 21.1362 19.722 20.7457 19.3315L13.4513 12.0371L20.7457 4.74272C21.1362 4.3522 21.1362 3.71903 20.7457 3.32851Z" fill="currentColor" /></svg>

@@ -40,11 +40,11 @@ var schema = Form{
 		Title:  "Хобби",
 		Widget: "lookup",
 	},
-	{
-		Id:     "city",
-		Title:  "Город",
-		Widget: "lookup",
-	},
+	// {
+	// 	Id:     "city",
+	// 	Title:  "Город",
+	// 	Widget: "lookup",
+	// },
 }
 
 type LookupTmplData struct {
@@ -67,6 +67,7 @@ type LookupState struct {
 type LookupListItem struct {
 	Value  string
 	IsLast bool
+	Index int
 }
 func buildList(items []string) []LookupListItem {
 	result := make([]LookupListItem, len(items))
@@ -75,6 +76,7 @@ func buildList(items []string) []LookupListItem {
 		result[i] = LookupListItem{
 			Value:  v,
 			IsLast: i == len(items)-1,
+			Index: i,
 		}
 	}
 
@@ -102,6 +104,7 @@ func main() {
     r := chi.NewRouter()
     r.Get("/", handleForm)
 	r.Get("/fields/{field}/widgets/lookup/list", handleLookupList)
+	r.Post("/fields/{field}/widgets/lookup/change", handleLookupChange)
 	r.Post("/fields/{field}/reset", handleReset)
 	r.Put("/submit", handleSubmit)
 	r.Post("/reset", handleReset)
@@ -265,4 +268,22 @@ func startEnd(offset int, limit int, total int) (int, int) {
 	}
 
 	return start, end
+}
+
+func handleLookupChange(w http.ResponseWriter, r *http.Request) {
+	fieldId := chi.URLParam(r, "field")
+
+	appSignals := struct {
+		Fields map[string]LookupState `json:"fields,omitempty"`
+	}{
+		Fields: make(map[string]LookupState),
+	}
+
+	if err := datastar.ReadSignals(r, &appSignals); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	
+	log.Println("fieldId:", fieldId)
+	log.Println("Received app signals:", appSignals)
 }
