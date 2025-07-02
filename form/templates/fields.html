@@ -78,23 +78,12 @@
             role="option"
             class="focus:bg-gray-200 outline-none rounded-sm"
             data-on-click="$fields.{{ $.Id }}.value = '{{ .Value }}'; $fields.{{ $.Id }}.search = ''; document.querySelector('#{{ $.Id }}-lookup-dropdown')?.hidePopover();"
+            data-on-blur="!evt.relatedTarget && evt.target.closest('.fieldset')?.querySelector('input')?.focus()"
             data-on-keydown="
                 evt.code === 'Enter' && (
                     $fields.{{ $.Id }}.value = '{{ .Value }}',
                     $fields.{{ $.Id }}.search = '',
-                    document.querySelector('#{{ $.Id }}-lookup-dropdown')?.hidePopover()
-                );
-                evt.code === 'Escape' && (
-                    $fields.{{ $.Id }}.search = '',
-                    document.querySelector('#{{ $.Id }}-lookup-dropdown')?.hidePopover()
-                );
-                evt.code === 'ArrowUp' && (
-                    evt.target.previousElementSibling ? evt.target.previousElementSibling.focus() : evt.target.parentElement.querySelector('li:last-of-type')?.focus()
-                );
-                evt.code === 'ArrowDown' && (
-                    evt.target.nextElementSibling ? evt.target.nextElementSibling.focus() : evt.target.parentElement.querySelector('li:first-of-type')?.focus()
-                );
-                ['Enter', 'Escape', 'ArrowUp', 'ArrowDown'].includes(evt.code) && (
+                    document.querySelector('#{{ $.Id }}-lookup-dropdown')?.hidePopover(),
                     evt.preventDefault(),
                     evt.stopPropagation()
                 )"
@@ -118,6 +107,12 @@
             id="{{ .Id }}-lookup-list"
             class="menu"
             data-on-intersect__once="@get('/fields/{{ .Id }}/widgets/lookup/list')"
+            data-on-keydown="
+                evt.code === 'ArrowUp' && (evt.target.previousElementSibling ? evt.target.previousElementSibling.focus() : evt.target.parentElement.querySelector('li:last-of-type')?.focus());
+                evt.code === 'ArrowDown' && (evt.target.nextElementSibling ? evt.target.nextElementSibling.focus() : evt.target.parentElement.querySelector('li:first-of-type')?.focus());
+                ['ArrowUp', 'ArrowDown'].includes(evt.code) && (evt.preventDefault(), evt.stopPropagation());
+                (evt.key.length === 1 || evt.code === 'Space' || (evt.code === 'Backspace' && $fields.{{ $.Id }}.search !== '')) && evt.target.closest('.fieldset')?.querySelector('input')?.focus();
+            "
         >
         </ul>
     </div>
@@ -133,6 +128,12 @@
         <ul
             id="{{ .Id }}-lookup-list"
             class="menu"
+            data-on-keydown="
+                evt.code === 'ArrowUp' && (evt.target.previousElementSibling ? evt.target.previousElementSibling.focus() : evt.target.parentElement.querySelector('li:last-of-type')?.focus());
+                evt.code === 'ArrowDown' && (evt.target.nextElementSibling ? evt.target.nextElementSibling.focus() : evt.target.parentElement.querySelector('li:first-of-type')?.focus());
+                ['ArrowUp', 'ArrowDown'].includes(evt.code) && (evt.preventDefault(), evt.stopPropagation());
+                (evt.key.length === 1 || evt.code === 'Space' || (evt.code === 'Backspace' && $fields.{{ $.Id }}.search !== '')) && evt.target.closest('.fieldset')?.querySelector('input')?.focus();
+            "
         >
         </ul>
     </div>
