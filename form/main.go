@@ -20,6 +20,7 @@ type Field struct {
 	Title string
 	Description string
 	Widget string
+	Type string // "string", "number", "boolean", "array"
 }
 
 type Form []Field
@@ -29,16 +30,19 @@ var schema = Form{
 		Id:     "name",
 		Title:  "Имя",
 		Widget: "input_string",
+		Type: "string",
 	},	
 	{
 		Id:     "age",
 		Title:  "Возраст",
 		Widget: "input_number",
+		Type: "number",
 	},
 	{
 		Id:     "hobby",
 		Title:  "Хобби",
 		Widget: "lookup",
+		Type : "string",
 	},
 	// {
 	// 	Id:     "city",
@@ -88,18 +92,51 @@ func contains(s, substr string) bool {
 	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
 }
 
+func dict(values ...interface{}) map[string]interface{} {
+	m := make(map[string]interface{})
+
+	for i := 0; i < len(values); i += 2 {
+		key := values[i].(string)
+		m[key] = values[i+1]
+	}
+
+	return m
+}
+
+var funcs = template.FuncMap{
+    "dict": dict,
+}
+
+// var tmpl = template.New("").Funcs(funcs)
 
 func main() {
 	gofakeit.Seed(111)
 
-	for i := range 100 {
+	for range 100 {
 		item := gofakeit.Hobby()
 		lookupAllItems = append(lookupAllItems, item)
-		log.Println(i, item)
+		// log.Println(i, item)
 	}
 
  	// Загружаем все шаблоны
-    templates = template.Must(template.ParseGlob("templates/*.html"))
+	// templates = template.New("").Funcs(template.FuncMap{
+    //     "dict": dict,
+    // })
+
+    // Загружаем все шаблоны
+    // templates = template.Must(templates.ParseGlob("templates/*.html"))
+
+	templates = template.New("").Funcs(template.FuncMap{
+        "dict": func(args ...string) map[string]any {
+            res := make(map[string]any)
+            for _, arg := range args {
+                res[arg] = arg
+            }
+            return res
+        },
+    })
+    // Загружаем все шаблоны
+    templates = template.Must(templates.ParseGlob("templates/*.html"))
 
     r := chi.NewRouter()
     r.Get("/", handleForm)
@@ -203,7 +240,7 @@ func handleLookupList(w http.ResponseWriter, r *http.Request) {
 		// FIX  FragmentMergeModeInner работает некорректно с массивом 
 		// поэтому очищаем список с помощью передачи пустого элемента
 		// fmm = datastar.FragmentMergeModeInner
-		sse.MergeFragments(templ("lookup_list_fix", struct { Id string }{ Id: fieldId }))
+		sse.MergeFragments(templ("lookup_list", struct { Id string; SkipGetList bool }{ Id: fieldId, SkipGetList: true }),)
 	}
 
 	sse.MergeSignals([]byte(`{ fields: {` + fieldId + `: {"offset":` + strconv.Itoa(lookupSignals.Offset + lookupSignals.Limit) + `}}}`))
@@ -214,11 +251,11 @@ func handleLookupList(w http.ResponseWriter, r *http.Request) {
 		datastar.WithMergeMode(fmm),
 	)
 
-	log.Println("start: ", start, ", ", "end: ", end, ", ", "offset: ", lookupSignals.Offset,", ", "mode: ", fmm)
+	// log.Println("start: ", start, ", ", "end: ", end, ", ", "offset: ", lookupSignals.Offset,", ", "mode: ", fmm)
 	
-	for i := range len(itemsData.List) {
-		log.Println("Item", i, ":", itemsData.List[i].Value)
-	}
+	// for i := range len(itemsData.List) {
+	// 	log.Println("Item", i, ":", itemsData.List[i].Value)
+	// }
 }
 
 func handleSubmit(w http.ResponseWriter, r *http.Request) {
@@ -286,4 +323,8 @@ func handleLookupChange(w http.ResponseWriter, r *http.Request) {
 	
 	log.Println("fieldId:", fieldId)
 	log.Println("Received app signals:", appSignals)
+
+	lookupSignals := appSignals.Fields[fieldId]
+
+	sse := datastar.NewSSE(w, r)
 }
