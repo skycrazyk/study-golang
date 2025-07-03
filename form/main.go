@@ -107,7 +107,7 @@ var funcs = template.FuncMap{
     "dict": dict,
 }
 
-// var tmpl = template.New("").Funcs(funcs)
+var tmpl = template.New("").Funcs(funcs)
 
 func main() {
 	gofakeit.Seed(111)
@@ -118,25 +118,8 @@ func main() {
 		// log.Println(i, item)
 	}
 
- 	// Загружаем все шаблоны
-	// templates = template.New("").Funcs(template.FuncMap{
-    //     "dict": dict,
-    // })
-
     // Загружаем все шаблоны
-    // templates = template.Must(templates.ParseGlob("templates/*.html"))
-
-	templates = template.New("").Funcs(template.FuncMap{
-        "dict": func(args ...string) map[string]any {
-            res := make(map[string]any)
-            for _, arg := range args {
-                res[arg] = arg
-            }
-            return res
-        },
-    })
-    // Загружаем все шаблоны
-    templates = template.Must(templates.ParseGlob("templates/*.html"))
+    templates = template.Must(tmpl.ParseGlob("templates/*.html"))
 
     r := chi.NewRouter()
     r.Get("/", handleForm)
@@ -324,7 +307,7 @@ func handleLookupChange(w http.ResponseWriter, r *http.Request) {
 	log.Println("fieldId:", fieldId)
 	log.Println("Received app signals:", appSignals)
 
-	lookupSignals := appSignals.Fields[fieldId]
+	// lookupSignals := appSignals.Fields[fieldId]
 
-	sse := datastar.NewSSE(w, r)
+	// sse := datastar.NewSSE(w, r)
 }
