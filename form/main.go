@@ -303,11 +303,38 @@ func handleLookupChange(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	
+
+	lookupSignals := appSignals.Fields[fieldId]
+
+	sse := datastar.NewSSE(w, r)
+
+	if lookupSignals.Value == nil || lookupSignals.Value == "" {
+		sse.RemoveFragments(fmt.Sprintf("#%s-lookup-value", fieldId))
+		return
+	}
+
+	var valueStr string
+
+	if v, ok := lookupSignals.Value.(string); ok {
+		valueStr = v
+	} else {
+		valueStr = fmt.Sprintf("%v", lookupSignals.Value)
+	}
+
+	valueRender := templ("lookup_value", struct {
+		Id string
+		Value string
+	}{
+		Id: fieldId,
+		Value: valueStr,
+	})
+
+	sse.RemoveFragments(fmt.Sprintf("#%s-lookup-value", fieldId))
+	sse.MergeFragments(
+		valueRender,
+		datastar.WithSelector(fmt.Sprintf("#%s-lookup-anchor", fieldId)),
+		datastar.WithMergeMode(datastar.FragmentMergeModePrepend),
+	)
 	log.Println("fieldId:", fieldId)
 	log.Println("Received app signals:", appSignals)
-
-	// lookupSignals := appSignals.Fields[fieldId]
-
-	// sse := datastar.NewSSE(w, r)
 }
