@@ -69,7 +69,12 @@
 {{ define "lookup_list" }}
     <div 
         popover
-        style="position-anchor:--{{ .Id }}-lookup-anchor"
+        style="
+            position: absolute;
+            position-anchor: --{{ .Id }}-lookup-anchor;
+            top: anchor(--{{ .Id }}-lookup-anchor bottom);
+            left: anchor(--{{ .Id }}-lookup-anchor left);
+        "
         class="dropdown max-h-48 bg-base-100 rounded-box z-1 shadow-sm overflow-y-auto flex-nowrap"
         id="{{ .Id }}-lookup-dropdown"
     >
