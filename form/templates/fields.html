@@ -126,11 +126,12 @@
             $fields.{{ .Id }}.value === '{{ .Value }}'
         {{ end }}
     "
-    {{ if .Selected }}
-        class="bg-blue-300 focus:bg-blue-400 outline-none rounded-sm"
-    {{ else }}
-        class="focus:bg-gray-200 outline-none rounded-sm"
-    {{ end }}
+        class="outline-none rounded-sm"
+    data-class="{
+        'bg-blue-300':  $fields.{{ .Id }}.items.{{ .ValueId }}.selected,
+        'focus:bg-blue-400': $fields.{{ .Id }}.items.{{ .ValueId }}.selected,
+        'focus:bg-gray-200': !$fields.{{ .Id }}.items.{{ .ValueId }}.selected
+    }"
     data-on-click="
         $fields.{{ .Id }}.items.{{ .ValueId }}.selected ? (
             $fields.{{ .Id }}.removeByValue = '{{ .Value }}',
@@ -165,10 +166,7 @@
         data-on-intersect__once="@get('/fields/{{ .Id }}/widgets/lookup/list')" 
     {{end}}
 >
-    <span>
-        <span data-text="$fields.{{ .Id }}.items.{{ .ValueId }}.selected ? '✓' : ''" class="mr-2"></span>
-        {{ .Value }}
-    </span>
+    <span>{{ .Value }}</span>
     
 </li>
 {{ end }}
