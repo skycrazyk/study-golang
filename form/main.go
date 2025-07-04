@@ -437,6 +437,20 @@ func handleLookupReset(w http.ResponseWriter, r *http.Request) {
 
 		return
 	} else if lookupSignals.RemoveByValue != nil {
+		// Удаляем соответствующий элемент из DOM
+		removeIndex := -1
+		
+		log.Println("RemoveByValue: ",lookupSignals.RemoveByValue)
+
+		if arr, ok := lookupSignals.Value.([]any); ok {
+			for i, v := range arr {
+				if v == lookupSignals.RemoveByValue {
+					removeIndex = i
+					break
+				}
+			}
+		}
+		
 		// Удаляем элемент по значению
 		if arr, ok := lookupSignals.Value.([]any); ok {
 			newArr := make([]any, 0)
@@ -447,6 +461,19 @@ func handleLookupReset(w http.ResponseWriter, r *http.Request) {
 			}
 			lookupSignals.Value = newArr
 		}
+
+		sse.MarshalAndMergeSignals(map[string]map[string]any{
+			"fields": {
+				field.Id: map[string]any{
+					"value": lookupSignals.Value,
+					"removeByIndex": -1,
+					"removeByValue": nil,
+				},
+			},
+		})
+
+		sse.RemoveFragments(fmt.Sprintf("#%s-lookup-anchor > .badge:nth-child(%d)", field.Id, removeIndex+1))
+
 		return
 	}
 
