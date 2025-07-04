@@ -17,40 +17,11 @@
         * {
             box-sizing: border-box;
         }
-.anchor, .target {
-    color: white;
-    font-weight: bold;
-    background: red;
-    border: thin solid black;
-    border-radius: 2px;
-    padding: 0.5em;
-    white-space: nowrap;
-}
     </style>
   </head>
   <body>
     <h1>User Form</h1>
     {{ template "form" . }}
-    <div style="position: relative" class="demo-elements">
-        <button 
-          class="anchor" 
-          popovertarget="my-target"
-          style="
-            anchor-name: --my-anchor-positioning;
-            width: 300px;
-          "
-        >Anchor</button>
-        <div class="target"
-        id="my-target"
-        popover
-        style="
-    width: 100px;    
-    position: absolute;
-    top: anchor( --my-anchor-positioning bottom);
-    left: anchor( --my-anchor-positioning left);
-        " 
-        >Target</div>
-   </div>
   </body>
 </html>
 {{ end }}

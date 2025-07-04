@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -44,17 +45,19 @@ var schema = Form{
 		Widget: "lookup",
 		Type : "string",
 	},
-	// {
-	// 	Id:     "city",
-	// 	Title:  "Город",
-	// 	Widget: "lookup",
-	// },
+	{
+		Id:     "city",
+		Title:  "Город",
+		Widget: "lookup",
+		Type: "array",
+	},
 }
 
 type LookupTmplData struct {
     List []LookupListItem
 	Id string 
 	HasMore bool
+	Type string
 }
 
 var templates *template.Template
@@ -66,21 +69,45 @@ type LookupState struct {
 	Search string `json:"search,omitempty"`
 	Open bool `json:"open,omitempty"`
 	Value any `json:"value,omitempty"`
+	AddValue any `json:"addValue,omitempty"`
+	RemoveByIndex int `json:"removeByIndex,omitempty"` // индекс удаляемого значения
+	RemoveByValue any `json:"removeByValue,omitempty"` // индекс удаляемого значения
 }
 
 type LookupListItem struct {
 	Value  string
+	ValueId string
 	IsLast bool
 	Index int
+	Selected bool 
+	Id string
+	Type string
+	HasMore bool 
 }
-func buildList(items []string) []LookupListItem {
+
+func buildLookupItemList(items []string, field *Field, lookupSignals *LookupState, HasMore bool) []LookupListItem {
 	result := make([]LookupListItem, len(items))
 
 	for i, v := range items {
 		result[i] = LookupListItem{
 			Value:  v,
+			ValueId: strings.ToLower(strings.NewReplacer(" ", "_", ".", "_", "-", "_").Replace(v)),
 			IsLast: i == len(items)-1,
 			Index: i,
+			Selected: (field.Type == "string" && v == lookupSignals.Value) ||
+				(field.Type == "array" && func() bool {
+					if arr, ok := lookupSignals.Value.([]any); ok {
+						for _, item := range arr {
+							if s, ok := item.(string); ok && s == v {
+								return true
+							}
+						}
+					}
+					return false
+				}()),
+			Id: field.Id,
+			Type: field.Type,
+			HasMore: HasMore,
 		}
 	}
 
@@ -123,11 +150,13 @@ func main() {
 
     r := chi.NewRouter()
     r.Get("/", handleForm)
-	r.Get("/fields/{field}/widgets/lookup/list", handleLookupList)
-	r.Post("/fields/{field}/widgets/lookup/change", handleLookupChange)
-	r.Post("/fields/{field}/reset", handleReset)
 	r.Put("/submit", handleSubmit)
 	r.Post("/reset", handleReset)
+	r.Post("/fields/{field}/reset", handleReset)
+
+	r.Get("/fields/{field}/widgets/lookup/list", handleLookupList)
+	r.Post("/fields/{field}/widgets/lookup/add", handleLookupAdd)
+	r.Post("/fields/{field}/widgets/lookup/reset", handleLookupReset)
 
 	port := os.Getenv("PORT")
 
@@ -173,24 +202,9 @@ func handleForm(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleLookupList(w http.ResponseWriter, r *http.Request) {
-	fieldId := chi.URLParam(r, "field")
-	listId := fmt.Sprintf("%s-lookup-list", fieldId) 
+	field, lookupSignals := getLookupField(w, r)
+	listId := fmt.Sprintf("%s-lookup-list", field.Id) 
 
-
-	appSignals := struct {
-		Fields map[string]LookupState `json:"fields,omitempty"`
-	}{
-		Fields: make(map[string]LookupState),
-	}
-
-	if err := datastar.ReadSignals(r, &appSignals); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	log.Println("Received app signals:", appSignals)
-
-	lookupSignals := appSignals.Fields[fieldId]
 	sse := datastar.NewSSE(w, r)
 
 	filteredItems := lookupAllItems 
@@ -207,11 +221,12 @@ func handleLookupList(w http.ResponseWriter, r *http.Request) {
 
 	var start, end = startEnd(lookupSignals.Offset, lookupSignals.Limit, len(filteredItems))
 
-    pageList := buildList(filteredItems[start:end])
+    pageList := buildLookupItemList(filteredItems[start:end], field, lookupSignals, len(filteredItems) > end)
 
 	itemsData := LookupTmplData{
+		Id: field.Id,
+		Type: field.Type,
 		List: pageList,
-		Id: fieldId,
 		HasMore: len(filteredItems) > end,
 	}
 
@@ -223,10 +238,10 @@ func handleLookupList(w http.ResponseWriter, r *http.Request) {
 		// FIX  FragmentMergeModeInner работает некорректно с массивом 
 		// поэтому очищаем список с помощью передачи пустого элемента
 		// fmm = datastar.FragmentMergeModeInner
-		sse.MergeFragments(templ("lookup_list", struct { Id string; SkipGetList bool }{ Id: fieldId, SkipGetList: true }),)
+		sse.MergeFragments(templ("lookup_list", struct { Id string; SkipGetList bool }{ Id: field.Id, SkipGetList: true }),)
 	}
 
-	sse.MergeSignals([]byte(`{ fields: {` + fieldId + `: {"offset":` + strconv.Itoa(lookupSignals.Offset + lookupSignals.Limit) + `}}}`))
+	sse.MergeSignals([]byte(`{ fields: {` + field.Id + `: {"offset":` + strconv.Itoa(lookupSignals.Offset + lookupSignals.Limit) + `}}}`))
 
 	sse.MergeFragments(
 		itemsRender, 
@@ -290,7 +305,7 @@ func startEnd(offset int, limit int, total int) (int, int) {
 	return start, end
 }
 
-func handleLookupChange(w http.ResponseWriter, r *http.Request) {
+func getLookupField(w http.ResponseWriter, r *http.Request) (*Field, *LookupState) {
 	fieldId := chi.URLParam(r, "field")
 
 	appSignals := struct {
@@ -301,40 +316,140 @@ func handleLookupChange(w http.ResponseWriter, r *http.Request) {
 
 	if err := datastar.ReadSignals(r, &appSignals); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return nil, nil
 	}
 
 	lookupSignals := appSignals.Fields[fieldId]
 
-	sse := datastar.NewSSE(w, r)
+	var field *Field
 
-	if lookupSignals.Value == nil || lookupSignals.Value == "" {
-		sse.RemoveFragments(fmt.Sprintf("#%s-lookup-value", fieldId))
+	for i := range schema {
+		if schema[i].Id == fieldId {
+			field = &schema[i]
+			break
+		}
+	}
+
+	if field == nil {
+		http.Error(w, "Unknown field", http.StatusBadRequest)
+		return nil, nil
+	}
+
+	return field, &lookupSignals
+}
+	
+func handleLookupAdd(w http.ResponseWriter, r *http.Request) {
+	field, lookupSignals := getLookupField(w, r)
+
+	if field == nil || lookupSignals == nil {
+		http.Error(w, "Invalid field or lookup signals", http.StatusBadRequest)
 		return
 	}
 
-	var valueStr string
+	var nextValue any
 
-	if v, ok := lookupSignals.Value.(string); ok {
-		valueStr = v
+	if field.Type == "array" {
+		if arr, ok := lookupSignals.Value.([]any); ok {
+			nextValue = append(arr, lookupSignals.AddValue)
+		} else if lookupSignals.Value == nil {
+			nextValue = []any{lookupSignals.AddValue}
+		}
 	} else {
-		valueStr = fmt.Sprintf("%v", lookupSignals.Value)
+		nextValue = lookupSignals.AddValue	
+	}
+
+	jsonValue, err := json.Marshal(nextValue)
+
+	sse := datastar.NewSSE(w, r)
+
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	sse.MergeSignals([]byte(fmt.Sprintf(`{ fields: {"%s": {value: %s}}}`, field.Id, string(jsonValue))))
+
+	var mfs string
+	var mfm datastar.FragmentMergeMode 
+
+	var nextLen int
+
+	switch v := nextValue.(type) {
+	case []any:
+		nextLen = len(v)
+	default:
+		nextLen = 1
+	}
+
+	if nextLen >= 2 {
+		mfs = fmt.Sprintf("#%s-lookup-anchor > .badge:last-of-type", field.Id)
+		mfm = datastar.FragmentMergeModeAfter
+	} else {
+		mfs = fmt.Sprintf("#%s-lookup-anchor", field.Id)
+		sse.RemoveFragments(fmt.Sprintf("#%s-lookup-anchor > .badge", field.Id))
+		mfm = datastar.FragmentMergeModePrepend
 	}
 
 	valueRender := templ("lookup_value", struct {
-		Id string
+		Id    string
 		Value string
+		Type  string
 	}{
-		Id: fieldId,
-		Value: valueStr,
+		Id:    field.Id,
+		Value: fmt.Sprintf("%v", lookupSignals.AddValue),
+		Type:  field.Type,
 	})
 
-	sse.RemoveFragments(fmt.Sprintf("#%s-lookup-value", fieldId))
 	sse.MergeFragments(
 		valueRender,
-		datastar.WithSelector(fmt.Sprintf("#%s-lookup-anchor", fieldId)),
-		datastar.WithMergeMode(datastar.FragmentMergeModePrepend),
+		datastar.WithSelector(mfs),
+		datastar.WithMergeMode(mfm),
 	)
-	log.Println("fieldId:", fieldId)
-	log.Println("Received app signals:", appSignals)
+}
+
+func handleLookupReset(w http.ResponseWriter, r *http.Request) {
+	field, lookupSignals := getLookupField(w, r)
+	sse := datastar.NewSSE(w, r)
+
+	if field == nil || lookupSignals == nil {
+		http.Error(w, "Invalid field or lookup signals", http.StatusBadRequest)
+		return
+	}
+	
+	if lookupSignals.RemoveByIndex != -1 {
+		// Удаляем элемент по индексу
+		if arr, ok := lookupSignals.Value.([]any); ok && lookupSignals.RemoveByIndex < len(arr) {
+			newArr := append(arr[:lookupSignals.RemoveByIndex], arr[lookupSignals.RemoveByIndex+1:]...)
+			lookupSignals.Value = newArr
+		}
+
+		sse.MarshalAndMergeSignals(map[string]map[string]any{
+			"fields": {
+				field.Id: map[string]any{
+					"value": lookupSignals.Value,
+					"removeByIndex": -1,
+				},
+			},
+		})
+
+		sse.RemoveFragments(fmt.Sprintf("#%s-lookup-anchor > .badge:nth-child(%d)", field.Id, lookupSignals.RemoveByIndex+1))
+
+		return
+	} else if lookupSignals.RemoveByValue != nil {
+		// Удаляем элемент по значению
+		if arr, ok := lookupSignals.Value.([]any); ok {
+			newArr := make([]any, 0)
+			for _, v := range arr {
+				if v != lookupSignals.RemoveByValue {
+					newArr = append(newArr, v)
+				}
+			}
+			lookupSignals.Value = newArr
+		}
+		return
+	}
+
+    sse.MergeSignals([]byte(`{ fields: {"` + field.Id + `": {value: null, removeByIndex: -1, removeByValue: null}}}`))
+	sse.RemoveFragments(fmt.Sprintf("#%s-lookup-anchor > .badge", field.Id))
 }
