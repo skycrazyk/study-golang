@@ -1,20 +1,26 @@
 {{ define "input_string" }}
-    <fieldset class="fieldset"  data-signals="{ fields: { {{ .Id }}: { value: ''  } } }">
+    <fieldset class="fieldset mb-3"  data-signals="{ fields: { {{ .Id }}: { value: ''  } } }">
         <legend class="fieldset-legend">{{ .Title }}</legend>
         <input data-bind="$fields.{{ .Id }}.value" class="input w-full" />
+        {{ if .Description }}
+            <p class="label">{{ .Description }}</p>
+        {{ end }}
     </fieldset>
 {{ end }}
 
 {{ define "input_number" }}
-    <fieldset class="fieldset"  data-signals="{ fields: { {{ .Id }}: { value: '' } } }">
+    <fieldset class="fieldset mb-3"  data-signals="{ fields: { {{ .Id }}: { value: '' } } }">
         <legend class="fieldset-legend">{{ .Title }}</legend>
         <input data-bind="$fields.{{ .Id }}.value" type="number" class="input w-full" />
+        {{ if .Description }}
+            <p class="label">{{ .Description }}</p>
+        {{ end }}
     </fieldset>
 {{ end }}
 
 {{ define "lookup" }}
     <fieldset 
-        class="fieldset"  
+        class="fieldset mb-3"  
         data-signals="{ fields: { {{ .Id }}: { value: null, search: '', open: false, offset: 0, limit: 15, abort: undefined, addValue: null, removeByIndex: -1, removeByValue: null } }}" 
     >
         <legend class="fieldset-legend">{{ .Title }}</legend>

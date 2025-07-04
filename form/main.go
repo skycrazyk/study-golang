@@ -29,27 +29,31 @@ type Form []Field
 var schema = Form{
 	{
 		Id:     "name",
-		Title:  "Имя",
+		Title:  "Имя (string)",
 		Widget: "input_string",
 		Type: "string",
+		Description: "Виджет input_string",
 	},	
 	{
 		Id:     "age",
-		Title:  "Возраст",
+		Title:  "Возраст (number)",
 		Widget: "input_number",
 		Type: "number",
+		Description: "Виджет input_number",
 	},
 	{
 		Id:     "hobby",
-		Title:  "Хобби",
+		Title:  "Хобби (string)",
 		Widget: "lookup",
 		Type : "string",
+		Description: "Виджет Lookup",
 	},
 	{
 		Id:     "city",
-		Title:  "Город",
+		Title:  "Города ([ ]string)",
 		Widget: "lookup",
 		Type: "array",
+		Description: "Виджет Lookup",
 	},
 }
 
