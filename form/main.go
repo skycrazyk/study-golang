@@ -425,7 +425,12 @@ func handleLookupReset(w http.ResponseWriter, r *http.Request) {
 		// Удаляем элемент по индексу
 		if arr, ok := lookupSignals.Value.([]any); ok && lookupSignals.RemoveByIndex < len(arr) {
 			newArr := append(arr[:lookupSignals.RemoveByIndex], arr[lookupSignals.RemoveByIndex+1:]...)
-			lookupSignals.Value = newArr
+
+			if len(newArr) == 0 {
+				lookupSignals.Value = nil
+			} else {
+				lookupSignals.Value = newArr
+			}
 		}
 
 		sse.MarshalAndMergeSignals(map[string]map[string]any{
@@ -463,7 +468,12 @@ func handleLookupReset(w http.ResponseWriter, r *http.Request) {
 					newArr = append(newArr, v)
 				}
 			}
-			lookupSignals.Value = newArr
+
+			if len(newArr) == 0 {
+				lookupSignals.Value = nil
+			} else {
+				lookupSignals.Value = newArr
+			}
 		}
 
 		sse.MarshalAndMergeSignals(map[string]map[string]any{
