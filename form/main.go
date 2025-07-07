@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
-	"text/template"
 
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/go-chi/chi/v5"
@@ -114,7 +114,7 @@ func buildLookupItemList(items []string, field *Field, lookupSignals *LookupStat
 	for i, v := range items {
 		result[i] = LookupListItem{
 			Value:  v,
-			ValueId: strings.ToLower(strings.NewReplacer(" ", "_", ".", "_", "-", "_").Replace(v)),
+			ValueId: strings.ToLower(strings.NewReplacer(" ", "", ".", "", "-", "").Replace(v)),
 			IsLast: i == len(items)-1,
 			Index: i,
 			Selected: (field.Type == "string" && v == lookupSignals.Value) ||
@@ -201,7 +201,7 @@ func templ (name string, data any) string {
 	return buf.String()
 }
 
-func fieldsTempls(f Form) string {
+func fieldsTempls(f Form) template.HTML {
 	var buf string
 
 	for _, field := range f {
@@ -209,12 +209,12 @@ func fieldsTempls(f Form) string {
 		buf += templ(field.Widget, field)
 	}
 
-	return buf
+	return template.HTML(buf)
 }
 
 func handleForm(w http.ResponseWriter, r *http.Request) {
     err := templates.ExecuteTemplate(w, "layout", struct {
-		Content string 
+		Content template.HTML 
 	}{
 		Content: fieldsTempls(schema),
 	})

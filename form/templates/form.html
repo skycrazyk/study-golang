@@ -2,12 +2,12 @@
 <fieldset class="fieldset bg-base-200 border-base-300 rounded-box w-xl border p-4">
   <form 
     id="form" 
-    data-on-submit="@put('/submit')" 
+    data-star-on-submit="@put('/submit')" 
   >
     {{ .Content }}
-    <p class="mt-4" data-on-signal-change-fields.*.value__debounce.1s="console.log('!!!Introspect!!!')">
+    <p class="mt-4" data-star-on-signal-change-fields.*.value__debounce.1s="console.log('!!!Introspect!!!')">
       <button class="btn btn-primary" type="submit">Submit</button>
-      <button class="btn" type="button" data-on-click__stop="@post('/reset')">Reset</button>
+      <button class="btn" type="button" data-star-on-click__stop="@post('/reset')">Reset</button>
     </p>
   </form>
 </fieldset>

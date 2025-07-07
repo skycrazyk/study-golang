@@ -1,7 +1,7 @@
 {{ define "input_string" }}
-    <fieldset class="fieldset mb-3"  data-signals="{ fields: { {{ .Id }}: { value: ''  } } }">
+    <fieldset class="fieldset mb-3"  data-star-signals="{ fields: { {{ .Id }}: { value: ''  } } }">
         <legend class="fieldset-legend">{{ .Title }}</legend>
-        <input data-bind="$fields.{{ .Id }}.value" class="input w-full" />
+        <input data-star-bind="$fields.{{ .Id }}.value" class="input w-full" />
         {{ if .Description }}
             <p class="label">{{ .Description }}</p>
         {{ end }}
@@ -9,9 +9,9 @@
 {{ end }}
 
 {{ define "input_number" }}
-    <fieldset class="fieldset mb-3"  data-signals="{ fields: { {{ .Id }}: { value: '' } } }">
+    <fieldset class="fieldset mb-3"  data-star-signals="{ fields: { {{ .Id }}: { value: '' } } }">
         <legend class="fieldset-legend">{{ .Title }}</legend>
-        <input data-bind="$fields.{{ .Id }}.value" type="number" class="input w-full" />
+        <input data-star-bind="$fields.{{ .Id }}.value" type="number" class="input w-full" />
         {{ if .Description }}
             <p class="label">{{ .Description }}</p>
         {{ end }}
@@ -21,7 +21,7 @@
 {{ define "lookup" }}
     <fieldset 
         class="fieldset mb-3"  
-        data-signals="{ fields: { {{ .Id }}: { value: null, search: '', open: false, offset: 0, limit: 15, abort: undefined, addValue: null, removeByIndex: -1, removeByValue: null } }}" 
+        data-star-signals="{ fields: { {{ .Id }}: { value: null, search: '', open: false, offset: 0, limit: 15, abort: undefined, addValue: null, removeByIndex: -1, removeByValue: null } }}" 
     >
         <legend class="fieldset-legend">{{ .Title }}</legend>
         <button
@@ -29,13 +29,13 @@
             id="{{ .Id }}-lookup-anchor"
             style="anchor-name:--{{ .Id }}-lookup-anchor"
             class="input relative inline-flex flex-wrap w-full h-auto pr-4 p-2 gap-1"
-            data-on-click="evt.target.querySelector('input')?.focus(); document.querySelector('#{{ .Id }}-lookup-dropdown')?.togglePopover()"
+            data-star-on-click="evt.target.querySelector('input')?.focus(); document.querySelector('#{{ .Id }}-lookup-dropdown')?.togglePopover()"
         >
             <input
                 class="grow gap-1 mt-0.5 w-auto min-w-[50px] h-[20px]"
-                data-bind="$fields.{{ .Id }}.search"
-                data-on-blur="!document.querySelector('#{{ .Id }}-lookup-dropdown:popover-open') && ($fields.{{ .Id }}.search = '')"
-                data-on-keydown="
+                data-star-bind="$fields.{{ .Id }}.search"
+                data-star-on-blur="!document.querySelector('#{{ .Id }}-lookup-dropdown:popover-open') && ($fields.{{ .Id }}.search = '')"
+                data-star-on-keydown="
                     !document.querySelector('#{{ .Id }}-lookup-dropdown:popover-open') && evt.code !== 'Escape' && document.querySelector('#{{ .Id }}-lookup-dropdown')?.showPopover();
                     evt.code === 'Enter' && (
                         $fields.{{ .Id }}.addValue = $fields.{{ .Id }}.search.trim(),
@@ -48,12 +48,12 @@
                     evt.code === 'ArrowDown' && evt.target.closest('.fieldset')?.querySelector('ul > li:first-of-type')?.focus();
                     ['Enter', 'ArrowUp', 'ArrowDown'].includes(evt.code) && (evt.preventDefault(), evt.stopPropagation());
                 "
-                data-on-signal-change-fields.{{ .Id }}.search__debounce.700ms="$fields.{{ .Id }}.offset = 0; @get('/fields/{{ .Id }}/widgets/lookup/list')"
+                data-star-on-signal-change-fields.{{ .Id }}.search__debounce.700ms="$fields.{{ .Id }}.offset = 0; @get('/fields/{{ .Id }}/widgets/lookup/list')"
             />
 
             <span
-                data-show="$fields.{{ .Id }}.value !== null"
-                data-on-click__stop="@post('/fields/{{ .Id }}/widgets/lookup/reset')"
+                data-star-show="$fields.{{ .Id }}.value !== null"
+                data-star-on-click__stop="@post('/fields/{{ .Id }}/widgets/lookup/reset')"
                 class="bg-gray-200 hover:bg-gray-300 transition-colors p-1 rounded-[50%] absolute right-2 top-2 cursor-pointer z-1"
             >
                 <svg class="w-3 h-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"><path d="M20.7457 3.32851C20.3552 2.93798 19.722 2.93798 19.3315 3.32851L12.0371 10.6229L4.74275 3.32851C4.35223 2.93798 3.71906 2.93798 3.32854 3.32851C2.93801 3.71903 2.93801 4.3522 3.32854 4.74272L10.6229 12.0371L3.32856 19.3314C2.93803 19.722 2.93803 20.3551 3.32856 20.7457C3.71908 21.1362 4.35225 21.1362 4.74277 20.7457L12.0371 13.4513L19.3315 20.7457C19.722 21.1362 20.3552 21.1362 20.7457 20.7457C21.1362 20.3551 21.1362 19.722 20.7457 19.3315L13.4513 12.0371L20.7457 4.74272C21.1362 4.3522 21.1362 3.71903 20.7457 3.32851Z" fill="currentColor" /></svg>
@@ -82,14 +82,14 @@
     <ul
         id="{{ .Id }}-lookup-list"
         class="menu"
-        data-on-keydown="
+        data-star-on-keydown="
             evt.code === 'ArrowUp' && (evt.target.previousElementSibling ? evt.target.previousElementSibling.focus() : evt.target.parentElement.querySelector('li:last-of-type')?.focus());
             evt.code === 'ArrowDown' && (evt.target.nextElementSibling ? evt.target.nextElementSibling.focus() : evt.target.parentElement.querySelector('li:first-of-type')?.focus());
             ['ArrowUp', 'ArrowDown'].includes(evt.code) && (evt.preventDefault(), evt.stopPropagation());
             (evt.key.length === 1 || evt.code === 'Space' || (evt.code === 'Backspace' && $fields.{{ $.Id }}.search !== '')) && evt.target.closest('.fieldset')?.querySelector('input')?.focus();
         "
         {{ if not .SkipGetList }}
-            data-on-intersect__once="@get('/fields/{{ .Id }}/widgets/lookup/list')"
+            data-star-on-intersect__once="@get('/fields/{{ .Id }}/widgets/lookup/list')"
         {{ end }}
     >
     </ul>
@@ -104,12 +104,12 @@
 {{ define "lookup_value" }}
     <div
         class="badge badge-neutral badge-outline badge-sm self-center cursor-default"
-        data-value="{{ .Value }}"
+        data-star-value="{{ .Value }}"
     >
         <span class="m-0">{{ .Value }}</span>
         {{ if eq .Type "array" }}
             <span
-                data-on-click__stop="
+                data-star-on-click__stop="
                     $fields.{{ .Id }}.removeByIndex = [...document.getElementById('{{ .Id }}-lookup-anchor').querySelectorAll('.badge')].indexOf(evt.target.closest('.badge')); 
                     @post('/fields/{{ .Id }}/widgets/lookup/reset')
                 "
@@ -125,7 +125,7 @@
 <li
     tabindex="0"
     role="option"
-    data-computed-fields.{{ .Id }}.items.{{ .ValueId }}.selected="
+    data-star-computed-fields.{{ .Id }}.items.{{ .ValueId }}.selected="
         {{ if eq .Type "array"}}
             $fields.{{ .Id }}.value?.includes('{{ .Value }}')
         {{ else }}
@@ -133,12 +133,12 @@
         {{ end }}
     "
         class="outline-none rounded-sm"
-    data-class="{
+    data-star-class="{
         'bg-blue-300':  $fields.{{ .Id }}.items.{{ .ValueId }}.selected,
         'focus:bg-blue-400': $fields.{{ .Id }}.items.{{ .ValueId }}.selected,
         'focus:bg-gray-200': !$fields.{{ .Id }}.items.{{ .ValueId }}.selected
     }"
-    data-on-click="
+    data-star-on-click="
         $fields.{{ .Id }}.items.{{ .ValueId }}.selected ? (
             $fields.{{ .Id }}.removeByValue = '{{ .Value }}',
             @post('/fields/{{ .Id }}/widgets/lookup/reset')
@@ -151,8 +151,8 @@
             document.querySelector('#{{ .Id }}-lookup-dropdown')?.hidePopover();
         {{end}}
     "
-    data-on-blur="!evt.relatedTarget && evt.target.closest('.fieldset')?.querySelector('input')?.focus()"
-    data-on-keydown="
+    data-star-on-blur="!evt.relatedTarget && evt.target.closest('.fieldset')?.querySelector('input')?.focus()"
+    data-star-on-keydown="
         evt.code === 'Enter' && (
             ($fields.{{ .Id }}.items.{{ .ValueId }}.selected ? (
                 $fields.{{ .Id }}.removeByValue = '{{ .Value }}',
@@ -169,7 +169,7 @@
             evt.stopPropagation()
         )"
     {{if and .IsLast .HasMore }} 
-        data-on-intersect__once="@get('/fields/{{ .Id }}/widgets/lookup/list')" 
+        data-star-on-intersect__once="@get('/fields/{{ .Id }}/widgets/lookup/list')" 
     {{end}}
 >
     <span>{{ .Value }}</span>
