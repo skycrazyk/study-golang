@@ -16,6 +16,10 @@ import (
 	datastar "github.com/starfederation/datastar/sdk/go"
 )
 
+type AppSignals = struct {
+	Fields map[string]any `json:"fields,omitempty"`
+}
+
 type Field struct {
 	Id string
 	Title string
@@ -25,6 +29,21 @@ type Field struct {
 }
 
 type Form []Field
+
+type Widget struct {
+	Reset func(w http.ResponseWriter, r *http.Request, fieldId *string, sse *datastar.ServerSentEventGenerator, appSignals *AppSignals)
+}
+
+type Widgets map[string]Widget
+
+var widgets = Widgets{
+	"lookup": {
+		Reset: lookupReset,
+	},
+	"input_string": {
+		Reset: inputStringReset,
+	},
+}
 
 var schema = Form{
 	{
@@ -206,7 +225,14 @@ func handleForm(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleLookupList(w http.ResponseWriter, r *http.Request) {
-	field, lookupSignals := getLookupField(w, r)
+	appSignals, err := readAppSignals(w, r)
+
+	if err != nil {
+		http.Error(w, "Error reading appSignals", http.StatusBadRequest)
+		return
+	}
+
+	field, lookupSignals := getLookupField(w, r, nil, appSignals)
 	listId := fmt.Sprintf("%s-lookup-list", field.Id) 
 
 	sse := datastar.NewSSE(w, r)
@@ -279,16 +305,41 @@ func handleSubmit(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
+func readAppSignals(w http.ResponseWriter, r *http.Request) (*AppSignals, error)  {
+	appSignals := AppSignals{
+		Fields: make(map[string]any),
+	}
+
+	if err := datastar.ReadSignals(r, &appSignals); err != nil {
+		return nil, err
+	}
+
+	return &appSignals, nil
+}
+
 func handleReset(w http.ResponseWriter, r *http.Request) {
     fieldId := chi.URLParam(r, "field")
+	appSignals, err := readAppSignals(w, r)
+
+	if err != nil {
+		http.Error(w, "Error reading appSignals", http.StatusBadRequest)
+		return 
+	}
+
 	sse := datastar.NewSSE(w, r)
 
     if fieldId == "" {
-        for _, field := range schema {
-            sse.MergeSignals([]byte(`{ fields: {"` + field.Id + `": {value: ''}}}`))
-        }
+		for _, field := range schema {
+			widget, ok := widgets[field.Widget]
+
+			if ok && widget.Reset != nil {
+				widget.Reset(w, r, &field.Id, sse, appSignals)
+			} else {
+				sse.MergeSignals([]byte(`{ fields: {"` + field.Id + `": {value: null }}}`))
+			}
+		}
     } else {
-        sse.MergeSignals([]byte(`{ fields: {"` + fieldId + `": {value: ''}}}`))
+        sse.MergeSignals([]byte(`{ fields: {"` + fieldId + `": {value: null }}}`))
     }
 
 	sse.RemoveFragments("#form-status")
@@ -309,26 +360,21 @@ func startEnd(offset int, limit int, total int) (int, int) {
 	return start, end
 }
 
-func getLookupField(w http.ResponseWriter, r *http.Request) (*Field, *LookupState) {
-	fieldId := chi.URLParam(r, "field")
+func getLookupField(w http.ResponseWriter, r *http.Request, fieldId *string, appSignals *AppSignals) (*Field, *LookupState) {
+	var resolvedFieldId string
 
-	appSignals := struct {
-		Fields map[string]LookupState `json:"fields,omitempty"`
-	}{
-		Fields: make(map[string]LookupState),
+	if fieldId != nil {
+		resolvedFieldId = *fieldId
+	} else {
+		resolvedFieldId = chi.URLParam(r, "field")
 	}
 
-	if err := datastar.ReadSignals(r, &appSignals); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return nil, nil
-	}
-
-	lookupSignals := appSignals.Fields[fieldId]
+	lookupSignalsAny := appSignals.Fields[resolvedFieldId]
 
 	var field *Field
 
 	for i := range schema {
-		if schema[i].Id == fieldId {
+		if schema[i].Id == resolvedFieldId {
 			field = &schema[i]
 			break
 		}
@@ -339,13 +385,36 @@ func getLookupField(w http.ResponseWriter, r *http.Request) (*Field, *LookupStat
 		return nil, nil
 	}
 
-	return field, &lookupSignals
+	var lookupSignals *LookupState
+	switch v := lookupSignalsAny.(type) {
+	case *LookupState:
+		lookupSignals = v
+	case LookupState:
+		lookupSignals = &v
+	case map[string]interface{}:
+		// Convert map to JSON then unmarshal into LookupState
+		b, _ := json.Marshal(v)
+		var ls LookupState
+		json.Unmarshal(b, &ls)
+		lookupSignals = &ls
+	case nil:
+		lookupSignals = &LookupState{
+			RemoveByIndex: -1,
+		}
+	default:
+		lookupSignals = &LookupState{
+			RemoveByIndex: -1,
+		}
+	}
+
+	return field, lookupSignals
 }
 	
 func handleLookupAdd(w http.ResponseWriter, r *http.Request) {
-	field, lookupSignals := getLookupField(w, r)
+	appSignals, err := readAppSignals(w, r)
+	field, lookupSignals := getLookupField(w, r, nil, appSignals)
 
-	if field == nil || lookupSignals == nil {
+	if field == nil || lookupSignals == nil || err != nil {
 		http.Error(w, "Invalid field or lookup signals", http.StatusBadRequest)
 		return
 	}
@@ -413,8 +482,26 @@ func handleLookupAdd(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleLookupReset(w http.ResponseWriter, r *http.Request) {
-	field, lookupSignals := getLookupField(w, r)
+	appSignals, err := readAppSignals(w, r)
 	sse := datastar.NewSSE(w, r)
+
+	if err != nil {
+		http.Error(w, "Error reading appSignals", http.StatusBadRequest)
+		return
+	}
+
+	lookupReset(w, r, nil, sse, appSignals)
+}
+
+func lookupReset(w http.ResponseWriter, r *http.Request, fieldId *string, sse *datastar.ServerSentEventGenerator, appSignals *AppSignals) {
+	var field *Field
+	var lookupSignals *LookupState
+
+	if fieldId != nil {
+		field, lookupSignals = getLookupField(w, r, fieldId, appSignals)
+	} else {
+		field, lookupSignals = getLookupField(w, r, nil, appSignals)
+	}
 
 	if field == nil || lookupSignals == nil {
 		http.Error(w, "Invalid field or lookup signals", http.StatusBadRequest)
@@ -491,6 +578,10 @@ func handleLookupReset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-    sse.MergeSignals([]byte(`{ fields: {"` + field.Id + `": {value: null, removeByIndex: -1, removeByValue: null}}}`))
+	sse.MergeSignals([]byte(`{ fields: {"` + field.Id + `": {value: null, removeByIndex: -1, removeByValue: null}}}`))
 	sse.RemoveFragments(fmt.Sprintf("#%s-lookup-anchor > .badge", field.Id))
+}
+
+func inputStringReset(w http.ResponseWriter, r *http.Request, fieldId *string, sse *datastar.ServerSentEventGenerator, appSignals *AppSignals) {
+	sse.MergeSignals([]byte(`{ fields: {"` + *fieldId + `": {value: "" }}}`))
 }
