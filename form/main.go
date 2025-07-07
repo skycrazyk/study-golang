@@ -99,7 +99,7 @@ type LookupState struct {
 
 type LookupListItem struct {
 	Value  string
-	ValueId string
+	ValueId template.HTMLAttr 
 	IsLast bool
 	Index int
 	Selected bool 
@@ -114,7 +114,7 @@ func buildLookupItemList(items []string, field *Field, lookupSignals *LookupStat
 	for i, v := range items {
 		result[i] = LookupListItem{
 			Value:  v,
-			ValueId: strings.ToLower(strings.NewReplacer(" ", "", ".", "", "-", "").Replace(v)),
+			ValueId: template.HTMLAttr(strings.ToLower(strings.NewReplacer(" ", "_", ".", "_", "-", "_").Replace(v))),
 			IsLast: i == len(items)-1,
 			Index: i,
 			Selected: (field.Type == "string" && v == lookupSignals.Value) ||
