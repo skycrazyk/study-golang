@@ -62,6 +62,7 @@
 
     <div 
         popover
+        ontoggle="event.newState === 'open' && event.oldState !== 'open' && event.target.scrollTo(0, 0)"
         style="
             position-anchor: --{{ .Id }}-lookup-anchor;
             left: anchor(left);

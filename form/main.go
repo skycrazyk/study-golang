@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/go-chi/chi/v5"
@@ -176,6 +177,7 @@ func main() {
 	r.Put("/submit", handleSubmit)
 	r.Post("/reset", handleReset)
 	r.Post("/fields/{field}/reset", handleReset)
+	r.Post("/introspect", handleIntrospect)
 
 	r.Get("/fields/{field}/widgets/lookup/list", handleLookupList)
 	r.Post("/fields/{field}/widgets/lookup/add", handleLookupAdd)
@@ -210,6 +212,12 @@ func fieldsTempls(f Form) template.HTML {
 	}
 
 	return template.HTML(buf)
+}
+
+func handleIntrospect(w http.ResponseWriter, r *http.Request) {
+	time.Sleep(4 * time.Second)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status":"ok"}`))
 }
 
 func handleForm(w http.ResponseWriter, r *http.Request) {
