@@ -39,7 +39,7 @@
                     !document.querySelector('#{{ .Id }}-lookup-dropdown:popover-open') && evt.code !== 'Escape' && document.querySelector('#{{ .Id }}-lookup-dropdown')?.showPopover();
                     evt.code === 'Enter' && (
                         $fields.{{ .Id }}.addValue = $fields.{{ .Id }}.search.trim(),
-                        @post('/fields/{{ $.Id }}/widgets/lookup/add'),
+                        $fields.{{ .Id }}.addValue !== '' && @post('/fields/{{ $.Id }}/widgets/lookup/add'),
                         $fields.{{ .Id }}.search = '',
                         document.querySelector('#{{ .Id }}-lookup-dropdown')?.hidePopover()
                     );
