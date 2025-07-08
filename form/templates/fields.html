@@ -35,18 +35,23 @@
                 class="grow gap-1 mt-0.5 w-auto min-w-[50px] h-[20px]"
                 data-star-bind="$fields.{{ .Id }}.search"
                 data-star-on-blur="!document.querySelector('#{{ .Id }}-lookup-dropdown:popover-open') && ($fields.{{ .Id }}.search = '')"
+                data-star-on-key-code-enter__stop__prevent="
+                    $fields.{{ .Id }}.addValue = $fields.{{ .Id }}.search.trim();
+                    $fields.{{ .Id }}.addValue !== '' && @post('/fields/{{ $.Id }}/widgets/lookup/add');
+                    $fields.{{ .Id }}.search = '';
+                    document.querySelector('#{{ .Id }}-lookup-dropdown')?.hidePopover();
+                "
+                data-star-on-key-code-backspace="
+                    $fields.{{ .Id }}.search === '' && $fields.{{ .Id }}.value !== '' && @post('/fields/{{ .Id }}/reset')
+                "
+                data-star-on-key-code-arrowup__stop__prevent="
+                    evt.target.closest('.fieldset')?.querySelector('ul > li:last-of-type')?.focus()
+                "
+                data-star-on-key-code-arrowdown__stop__prevent="
+                    evt.target.closest('.fieldset')?.querySelector('ul > li:first-of-type')?.focus()
+                "
                 data-star-on-keydown="
                     !document.querySelector('#{{ .Id }}-lookup-dropdown:popover-open') && evt.code !== 'Escape' && document.querySelector('#{{ .Id }}-lookup-dropdown')?.showPopover();
-                    evt.code === 'Enter' && (
-                        $fields.{{ .Id }}.addValue = $fields.{{ .Id }}.search.trim(),
-                        $fields.{{ .Id }}.addValue !== '' && @post('/fields/{{ $.Id }}/widgets/lookup/add'),
-                        $fields.{{ .Id }}.search = '',
-                        document.querySelector('#{{ .Id }}-lookup-dropdown')?.hidePopover()
-                    );
-                    evt.code === 'Backspace' && $fields.{{ .Id }}.search === '' && $fields.{{ .Id }}.value !== '' && @post('/fields/{{ .Id }}/reset');
-                    evt.code === 'ArrowUp' && evt.target.closest('.fieldset')?.querySelector('ul > li:last-of-type')?.focus();
-                    evt.code === 'ArrowDown' && evt.target.closest('.fieldset')?.querySelector('ul > li:first-of-type')?.focus();
-                    ['Enter', 'ArrowUp', 'ArrowDown'].includes(evt.code) && (evt.preventDefault(), evt.stopPropagation());
                 "
                 data-star-on-signal-change-fields.{{ .Id }}.search__debounce.700ms="$fields.{{ .Id }}.offset = 0; @get('/fields/{{ .Id }}/widgets/lookup/list')"
             />
