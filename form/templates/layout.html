@@ -30,11 +30,6 @@
             
             let signalDefault = false
 
-            const { signal, inserted } = signals.upsertIfMissing(
-              signalName,
-              signalDefault,
-            )
-
             const setPopoverFromSignal = () => {
               let value = signals.value(signalName)
 
