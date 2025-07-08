@@ -25,7 +25,7 @@
 
       load({
         type: 1,
-        name: 'onKeyCode',
+        name: 'key',
         keyReq: 1,
         valReq: 1,
         argNames: ['evt'],
@@ -36,8 +36,8 @@
           let callback = (evt) => {
             if (evt) {
               if (evt.code.toLowerCase() !== key) return
-              if (mods.has('prevent') || key === 'submit') evt.preventDefault()
-              if (mods.has('stop')) evt.stopPropagation()
+              if (mods.has('prevent') || mods.has('prestop')) evt.preventDefault()
+              if (mods.has('stop') || mods.has('prestop')) evt.stopPropagation()
             }
             rx(evt)
           }

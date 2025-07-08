@@ -35,21 +35,15 @@
                 class="grow gap-1 mt-0.5 w-auto min-w-[50px] h-[20px]"
                 data-star-bind="$fields.{{ .Id }}.search"
                 data-star-on-blur="!document.querySelector('#{{ .Id }}-lookup-dropdown:popover-open') && ($fields.{{ .Id }}.search = '')"
-                data-star-on-key-code-enter__stop__prevent="
+                data-star-key-enter__prestop="
                     $fields.{{ .Id }}.addValue = $fields.{{ .Id }}.search.trim();
                     $fields.{{ .Id }}.addValue !== '' && @post('/fields/{{ $.Id }}/widgets/lookup/add');
                     $fields.{{ .Id }}.search = '';
                     document.querySelector('#{{ .Id }}-lookup-dropdown')?.hidePopover();
                 "
-                data-star-on-key-code-backspace="
-                    $fields.{{ .Id }}.search === '' && $fields.{{ .Id }}.value !== '' && @post('/fields/{{ .Id }}/reset')
-                "
-                data-star-on-key-code-arrowup__stop__prevent="
-                    evt.target.closest('.fieldset')?.querySelector('ul > li:last-of-type')?.focus()
-                "
-                data-star-on-key-code-arrowdown__stop__prevent="
-                    evt.target.closest('.fieldset')?.querySelector('ul > li:first-of-type')?.focus()
-                "
+                data-star-key-backspace="$fields.{{ .Id }}.search === '' && $fields.{{ .Id }}.value !== '' && @post('/fields/{{ .Id }}/reset')"
+                data-star-key-arrowup__prestop="evt.target.closest('.fieldset')?.querySelector('ul > li:last-of-type')?.focus()"
+                data-star-key-arrowdown__prestop="evt.target.closest('.fieldset')?.querySelector('ul > li:first-of-type')?.focus()"
                 data-star-on-keydown="
                     !document.querySelector('#{{ .Id }}-lookup-dropdown:popover-open') && evt.code !== 'Escape' && document.querySelector('#{{ .Id }}-lookup-dropdown')?.showPopover();
                 "
