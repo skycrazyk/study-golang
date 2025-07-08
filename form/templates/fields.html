@@ -29,19 +29,19 @@
             id="{{ .Id }}-lookup-anchor"
             style="anchor-name:--{{ .Id }}-lookup-anchor"
             class="input relative inline-flex flex-wrap w-full h-auto pr-4 p-2 gap-1"
-            data-star-on-click="evt.target.querySelector('input')?.focus(); document.querySelector('#{{ .Id }}-lookup-dropdown')?.togglePopover()"
+            data-star-on-click="evt.target.querySelector('input')?.focus(); $fields.{{ .Id }}.open = !$fields.{{ .Id }}.open"
         >
             <input
                 class="grow gap-1 mt-0.5 w-auto min-w-[50px] h-[20px]"
                 data-star-bind="$fields.{{ .Id }}.search"
-                data-star-on-blur="!document.querySelector('#{{ .Id }}-lookup-dropdown:popover-open') && ($fields.{{ .Id }}.search = '')"
+                data-star-on-blur="!$fields.{{ .Id }}.open && ($fields.{{ .Id }}.search = '')"
                 data-star-on-keydown="
-                    !document.querySelector('#{{ .Id }}-lookup-dropdown:popover-open') && evt.code !== 'Escape' && document.querySelector('#{{ .Id }}-lookup-dropdown')?.showPopover();
+                    !$fields.{{ .Id }}.open && evt.code !== 'Escape' && ($fields.{{ .Id }}.open = true);
                     evt.code === 'Enter' && (
                         $fields.{{ .Id }}.addValue = $fields.{{ .Id }}.search.trim(),
                         $fields.{{ .Id }}.addValue !== '' && @post('/fields/{{ $.Id }}/widgets/lookup/add'),
                         $fields.{{ .Id }}.search = '',
-                        document.querySelector('#{{ .Id }}-lookup-dropdown')?.hidePopover()
+                        $fields.{{ .Id }}.open = false 
                     );
                     evt.code === 'Backspace' && $fields.{{ .Id }}.search === '' && $fields.{{ .Id }}.value !== '' && @post('/fields/{{ .Id }}/reset');
                     evt.code === 'ArrowUp' && evt.target.closest('.fieldset')?.querySelector('ul > li:last-of-type')?.focus();
@@ -61,8 +61,7 @@
         </button>
 
     <div 
-        popover
-        data-star-on-toggle="evt.newState === 'open' && evt.oldState !== 'open' && evt.target.scrollTo(0, 0)"
+        data-star-popover__top="$fields.{{ .Id }}.open"
         style="
             position-anchor: --{{ .Id }}-lookup-anchor;
             left: anchor(left);
@@ -149,7 +148,7 @@
             $fields.{{ .Id }}.search = ''
         );
         {{ if ne .Type "array" }}
-            document.querySelector('#{{ .Id }}-lookup-dropdown')?.hidePopover();
+            $fields.{{ .Id }}.open = false;
         {{end}}
     "
     data-star-on-blur="!evt.relatedTarget && evt.target.closest('.fieldset')?.querySelector('input')?.focus()"
@@ -164,7 +163,7 @@
                 $fields.{{ .Id }}.search = ''
             )),
             {{ if ne .Type "array" }}
-                document.querySelector('#{{ .Id }}-lookup-dropdown')?.hidePopover(),
+                $fields.{{ .Id }}.open = false,
             {{end}}
             evt.preventDefault(),
             evt.stopPropagation()

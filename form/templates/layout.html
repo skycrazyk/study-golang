@@ -4,10 +4,75 @@
   <head>
     <meta charset="UTF-8" />
     <title>Form Example</title>
-    <script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.0-beta.11/bundles/datastar-aliased.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+          "datastar": "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.0-beta.11/bundles/datastar-aliased.js",
+          "utils/text": "https://cdn.jsdelivr.net/npm/@starfederation/datastar@1.0.0-beta.11/dist/utils/text.js"
+        }
+    }
+    </script>
+    <script type="module">
+        import { load } from 'datastar'
+        import { modifyCasing, trimDollarSignPrefix } from 'utils/text'
+
+        load({
+          type: 1,
+          name: 'popover',
+          keyReq: 0,
+          valReq: 1,
+          onLoad: ({ el, key, mods, signals, value, effect }) => {
+            el.setAttribute('popover', '')
+
+            const signalName = key
+              ? modifyCasing(key, mods)
+              : trimDollarSignPrefix(value)
+            
+            let signalDefault = false
+
+            const { signal, inserted } = signals.upsertIfMissing(
+              signalName,
+              signalDefault,
+            )
+
+            const setPopoverFromSignal = () => {
+              let value = signals.value(signalName)
+
+              if(value) {
+                el.showPopover?.()
+
+                if (mods.has('top')) {
+                  el.scrollTo(0, 0)
+                }
+                
+              } else {
+                el.hidePopover?.()
+              }
+            }
+
+            const setSignalFromPopover = (event) => {
+                if (event.newState === 'open' && event.oldState !== 'open') {
+                  signals.setValue(signalName, true)
+                }
+
+                if (event.newState === 'closed' && event.oldState !== 'closed') {
+                  signals.setValue(signalName, false)
+                }
+            }
+
+            el.addEventListener('toggle', setSignalFromPopover)
+
+            const reset = effect(() => setPopoverFromSignal())
+
+            return () => {
+              reset()
+              el.removeEventListener('toggle', setSignalFromPopover)
+            }
+          },
+        })
+    </script>
     <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/typography@0.5.16/src/index.min.js"></script> -->
     <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
     <script type="module">
       if (!("anchorName" in document.documentElement.style)) {
