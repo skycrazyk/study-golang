@@ -35,17 +35,26 @@
                 class="grow gap-1 mt-0.5 w-auto min-w-[50px] h-[20px]"
                 data-star-bind="$fields.{{ .Id }}.search"
                 data-star-on-blur="!document.querySelector('#{{ .Id }}-lookup-dropdown:popover-open') && ($fields.{{ .Id }}.search = '')"
+                data-star-on-signal-change-fields.{{ .Id }}.search__debounce.700ms="$fields.{{ .Id }}.offset = 0; @get('/fields/{{ .Id }}/widgets/lookup/list')"
+                data-star-on-keydown="!document.querySelector('#{{ .Id }}-lookup-dropdown:popover-open') && evt.code !== 'Escape' && document.querySelector('#{{ .Id }}-lookup-dropdown')?.showPopover()"
+                data-star-key-arrowup__prestop="evt.target.closest('.fieldset')?.querySelector('ul > li:last-of-type')?.focus()"
+                data-star-key-arrowdown__prestop="evt.target.closest('.fieldset')?.querySelector('ul > li:first-of-type')?.focus()"
                 data-star-key-enter__prestop="
                     $fields.{{ .Id }}.addValue = $fields.{{ .Id }}.search.trim();
                     $fields.{{ .Id }}.addValue !== '' && @post('/fields/{{ $.Id }}/widgets/lookup/add');
                     $fields.{{ .Id }}.search = '';
                     document.querySelector('#{{ .Id }}-lookup-dropdown')?.hidePopover();
                 "
-                data-star-key-backspace="$fields.{{ .Id }}.search === '' && $fields.{{ .Id }}.value !== '' && @post('/fields/{{ .Id }}/reset')"
-                data-star-key-arrowup__prestop="evt.target.closest('.fieldset')?.querySelector('ul > li:last-of-type')?.focus()"
-                data-star-key-arrowdown__prestop="evt.target.closest('.fieldset')?.querySelector('ul > li:first-of-type')?.focus()"
-                data-star-on-keydown="!document.querySelector('#{{ .Id }}-lookup-dropdown:popover-open') && evt.code !== 'Escape' && document.querySelector('#{{ .Id }}-lookup-dropdown')?.showPopover()"
-                data-star-on-signal-change-fields.{{ .Id }}.search__debounce.700ms="$fields.{{ .Id }}.offset = 0; @get('/fields/{{ .Id }}/widgets/lookup/list')"
+                data-star-key-backspace="
+                    $fields.{{ .Id }}.search === '' && $fields.{{ .Id }}.value !== '' && (
+                        {{ if eq .Type "array" }}
+                            $fields.{{ .Id }}.removeByIndex = [...document.getElementById('{{ .Id }}-lookup-anchor').querySelectorAll('.badge')].length - 1,
+                            @post('/fields/{{ .Id }}/widgets/lookup/reset')
+                        {{ else }}
+                            @post('/fields/{{ .Id }}/widgets/lookup/reset')
+                        {{ end }}
+                    )
+                "
             />
 
             <span
