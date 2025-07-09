@@ -207,8 +207,13 @@ func fieldsTempls(f Form) template.HTML {
 	var buf string
 
 	for _, field := range f {
-
-		buf += templ(field.Widget, field)
+		buf += templ("field", struct{
+			Widget template.HTML 
+			Field Field
+		}{ 
+			Widget: template.HTML(templ(field.Widget, field)), 
+			Field:  field,
+		}) 
 	}
 
 	return template.HTML(buf)

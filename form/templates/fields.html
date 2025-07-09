@@ -1,71 +1,85 @@
-{{ define "input_string" }}
-    <fieldset class="fieldset mb-3"  data-star-signals="{ fields: { {{ .Id }}: { value: ''  } } }">
-        <legend class="fieldset-legend">{{ .Title }}</legend>
-        <input data-star-bind="$fields.{{ .Id }}.value" class="input w-full" />
-        {{ if .Description }}
-            <p class="label">{{ .Description }}</p>
+{{ define "field"}}
+    <fieldset class="fieldset mb-3">
+        <legend class="fieldset-legend">{{ .Field.Title }}</legend>
+        {{ .Widget }}
+        {{ if .Field.Description }}
+            <p class="label">{{ .Field.Description }}</p>
         {{ end }}
     </fieldset>
+{{ end }}
+
+{{ define "input_string" }}
+    <input
+        data-star-signals="{ fields: { {{ .Id }}: { value: ''} } }"
+        data-star-signals-fields.{{ .Id }}.abort-ctrl__case.camel="new AbortController()"
+        data-star-on-signal-change-fields.{{ .Id }}.value__debounce.1s="
+            $fields.{{ .Id }}.abortCtrl?.abort?.(); 
+            $fields.{{ .Id }}.abortCtrl = new AbortController();
+            @post('/fields/{{ .Id }}/widgets/input-string/change', { abort: $fields.{{ .Id }}.abortCtrl.signal })
+        "
+        data-star-bind="$fields.{{ .Id }}.value"
+        class="input w-full" 
+    />
 {{ end }}
 
 {{ define "input_number" }}
-    <fieldset class="fieldset mb-3"  data-star-signals="{ fields: { {{ .Id }}: { value: '' } } }">
-        <legend class="fieldset-legend">{{ .Title }}</legend>
-        <input data-star-bind="$fields.{{ .Id }}.value" type="number" class="input w-full" />
-        {{ if .Description }}
-            <p class="label">{{ .Description }}</p>
-        {{ end }}
-    </fieldset>
+    <input 
+        data-star-signals="{ fields: { {{ .Id }}: { value: '' } } }"
+        data-star-signals-fields.{{ .Id }}.abort-ctrl__case.camel="new AbortController()"
+        data-star-on-signal-change-fields.{{ .Id }}.value__debounce.1s="
+            $fields.{{ .Id }}.abortCtrl?.abort?.(); 
+            $fields.{{ .Id }}.abortCtrl = new AbortController();
+            @post('/fields/{{ .Id }}/widgets/input-number/change', { abort: $fields.{{ .Id }}.abortCtrl.signal })
+        "
+        data-star-bind="$fields.{{ .Id }}.value"
+        type="number"
+        class="input w-full" 
+    />
 {{ end }}
 
 {{ define "lookup" }}
-    <fieldset 
-        class="fieldset mb-3"  
-        data-star-signals="{ fields: { {{ .Id }}: { value: null, search: '', open: false, offset: 0, limit: 15, abort: undefined, addValue: null, removeByIndex: -1, removeByValue: null } }}" 
+    <button
+        type="button"
+        id="{{ .Id }}-lookup-anchor"
+        style="anchor-name:--{{ .Id }}-lookup-anchor"
+        class="input relative inline-flex flex-wrap w-full h-auto pr-4 p-2 gap-1"
+        data-star-signals="{ fields: { {{ .Id }}: { value: null, search: '', open: false, offset: 0, limit: 15, abort: undefined, addValue: null, removeByIndex: -1, removeByValue: null } }}"
+        data-star-on-click="evt.target.querySelector('input')?.focus(); $fields.{{ .Id }}.open = !$fields.{{ .Id }}.open"
     >
-        <legend class="fieldset-legend">{{ .Title }}</legend>
-        <button
-            type="button"
-            id="{{ .Id }}-lookup-anchor"
-            style="anchor-name:--{{ .Id }}-lookup-anchor"
-            class="input relative inline-flex flex-wrap w-full h-auto pr-4 p-2 gap-1"
-            data-star-on-click="evt.target.querySelector('input')?.focus(); $fields.{{ .Id }}.open = !$fields.{{ .Id }}.open"
+        <input
+            class="grow gap-1 mt-0.5 w-auto min-w-[50px] h-[20px]"
+            data-star-bind="$fields.{{ .Id }}.search"
+            data-star-on-blur="!$fields.{{ .Id }}.open && ($fields.{{ .Id }}.search = '')"
+            data-star-on-signal-change-fields.{{ .Id }}.search__debounce.700ms="$fields.{{ .Id }}.offset = 0; @get('/fields/{{ .Id }}/widgets/lookup/list')"
+            data-star-on-keydown="!$fields.{{ .Id }}.open && evt.code !== 'Escape' && ($fields.{{ .Id }}.open = true)"
+            data-star-key-arrowup__prestop="evt.target.closest('.fieldset')?.querySelector('ul > li:last-of-type')?.focus()"
+            data-star-key-arrowdown__prestop="evt.target.closest('.fieldset')?.querySelector('ul > li:first-of-type')?.focus()"
+            data-star-key-enter__prestop="
+                $fields.{{ .Id }}.addValue = $fields.{{ .Id }}.search.trim();
+                $fields.{{ .Id }}.addValue !== '' && @post('/fields/{{ $.Id }}/widgets/lookup/add');
+                $fields.{{ .Id }}.search = '';
+                $fields.{{ .Id }}.open = false; 
+            "
+            data-star-key-backspace="
+                $fields.{{ .Id }}.search === '' && $fields.{{ .Id }}.value !== '' && (
+                    {{ if eq .Type "array" }}
+                        $fields.{{ .Id }}.removeByIndex = [...document.getElementById('{{ .Id }}-lookup-anchor').querySelectorAll('.badge')].length - 1,
+                        @post('/fields/{{ .Id }}/widgets/lookup/reset')
+                    {{ else }}
+                        @post('/fields/{{ .Id }}/widgets/lookup/reset')
+                    {{ end }}
+                )
+            "
+        />
+
+        <span
+            data-star-show="$fields.{{ .Id }}.value !== null"
+            data-star-on-click__stop="@post('/fields/{{ .Id }}/widgets/lookup/reset')"
+            class="bg-gray-200 hover:bg-gray-300 transition-colors p-1 rounded-[50%] absolute right-2 top-2 cursor-pointer z-1"
         >
-            <input
-                class="grow gap-1 mt-0.5 w-auto min-w-[50px] h-[20px]"
-                data-star-bind="$fields.{{ .Id }}.search"
-                data-star-on-blur="!$fields.{{ .Id }}.open && ($fields.{{ .Id }}.search = '')"
-                data-star-on-signal-change-fields.{{ .Id }}.search__debounce.700ms="$fields.{{ .Id }}.offset = 0; @get('/fields/{{ .Id }}/widgets/lookup/list')"
-                data-star-on-keydown="!$fields.{{ .Id }}.open && evt.code !== 'Escape' && ($fields.{{ .Id }}.open = true)"
-                data-star-key-arrowup__prestop="evt.target.closest('.fieldset')?.querySelector('ul > li:last-of-type')?.focus()"
-                data-star-key-arrowdown__prestop="evt.target.closest('.fieldset')?.querySelector('ul > li:first-of-type')?.focus()"
-                data-star-key-enter__prestop="
-                    $fields.{{ .Id }}.addValue = $fields.{{ .Id }}.search.trim();
-                    $fields.{{ .Id }}.addValue !== '' && @post('/fields/{{ $.Id }}/widgets/lookup/add');
-                    $fields.{{ .Id }}.search = '';
-                    $fields.{{ .Id }}.open = false; 
-                "
-                data-star-key-backspace="
-                    $fields.{{ .Id }}.search === '' && $fields.{{ .Id }}.value !== '' && (
-                        {{ if eq .Type "array" }}
-                            $fields.{{ .Id }}.removeByIndex = [...document.getElementById('{{ .Id }}-lookup-anchor').querySelectorAll('.badge')].length - 1,
-                            @post('/fields/{{ .Id }}/widgets/lookup/reset')
-                        {{ else }}
-                            @post('/fields/{{ .Id }}/widgets/lookup/reset')
-                        {{ end }}
-                    )
-                "
-            />
-
-            <span
-                data-star-show="$fields.{{ .Id }}.value !== null"
-                data-star-on-click__stop="@post('/fields/{{ .Id }}/widgets/lookup/reset')"
-                class="bg-gray-200 hover:bg-gray-300 transition-colors p-1 rounded-[50%] absolute right-2 top-2 cursor-pointer z-1"
-            >
-                <svg class="w-3 h-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"><path d="M20.7457 3.32851C20.3552 2.93798 19.722 2.93798 19.3315 3.32851L12.0371 10.6229L4.74275 3.32851C4.35223 2.93798 3.71906 2.93798 3.32854 3.32851C2.93801 3.71903 2.93801 4.3522 3.32854 4.74272L10.6229 12.0371L3.32856 19.3314C2.93803 19.722 2.93803 20.3551 3.32856 20.7457C3.71908 21.1362 4.35225 21.1362 4.74277 20.7457L12.0371 13.4513L19.3315 20.7457C19.722 21.1362 20.3552 21.1362 20.7457 20.7457C21.1362 20.3551 21.1362 19.722 20.7457 19.3315L13.4513 12.0371L20.7457 4.74272C21.1362 4.3522 21.1362 3.71903 20.7457 3.32851Z" fill="currentColor" /></svg>
-            </span>
-        </button>
-
+            <svg class="w-3 h-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"><path d="M20.7457 3.32851C20.3552 2.93798 19.722 2.93798 19.3315 3.32851L12.0371 10.6229L4.74275 3.32851C4.35223 2.93798 3.71906 2.93798 3.32854 3.32851C2.93801 3.71903 2.93801 4.3522 3.32854 4.74272L10.6229 12.0371L3.32856 19.3314C2.93803 19.722 2.93803 20.3551 3.32856 20.7457C3.71908 21.1362 4.35225 21.1362 4.74277 20.7457L12.0371 13.4513L19.3315 20.7457C19.722 21.1362 20.3552 21.1362 20.7457 20.7457C21.1362 20.3551 21.1362 19.722 20.7457 19.3315L13.4513 12.0371L20.7457 4.74272C21.1362 4.3522 21.1362 3.71903 20.7457 3.32851Z" fill="currentColor" /></svg>
+        </span>
+    </button>
     <div 
         data-star-popover-fields.{{ .Id }}.open__top
         style="
@@ -78,10 +92,6 @@
     >
         {{ template "lookup_list" (dict "Id" .Id "SkipGetList" "") }}
     </div>
-        {{ if .Description }}
-            <p class="label">{{ .Description }}</p>
-        {{ end }}
-    </fieldset>
 {{ end }}
 
 {{ define "lookup_list" }}
