@@ -4,7 +4,13 @@
   <head>
     <meta charset="UTF-8" />
     <title>Form Example</title>
-    <script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.0-beta.11/bundles/datastar-aliased.js"></script>
+    <script type="importmap">
+      {
+          "imports": {
+            "datastar": "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.0-beta.11/bundles/datastar-aliased.js"
+          }
+      }
+    </script>
     <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/typography@0.5.16/src/index.min.js"></script> -->
@@ -13,6 +19,35 @@
       if (!("anchorName" in document.documentElement.style)) {
         import("https://unpkg.com/@oddbird/css-anchor-positioning");
       }
+    </script>
+    <script type="module">
+      import { load } from 'datastar';
+
+      load({
+        type: 1,
+        name: 'key',
+        keyReq: 1,
+        valReq: 1,
+        argNames: ['evt'],
+        onLoad: (ctx) => {
+          const {el, key, mods, genRX} = ctx
+          const rx = genRX()
+
+          let callback = (evt) => {
+            if (evt) {
+              if (evt.code.toLowerCase() !== key) return
+              if (mods.has('prevent') || mods.has('prestop')) evt.preventDefault()
+              if (mods.has('stop') || mods.has('prestop')) evt.stopPropagation()
+            }
+            rx(evt)
+          }
+
+          el.addEventListener('keydown', callback)
+          return () => {
+            el.removeEventListener('keydown', callback)
+          }
+        }
+      });
     </script>
     <style>
         * {

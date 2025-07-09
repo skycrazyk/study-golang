@@ -35,20 +35,26 @@
                 class="grow gap-1 mt-0.5 w-auto min-w-[50px] h-[20px]"
                 data-star-bind="$fields.{{ .Id }}.search"
                 data-star-on-blur="!document.querySelector('#{{ .Id }}-lookup-dropdown:popover-open') && ($fields.{{ .Id }}.search = '')"
-                data-star-on-keydown="
-                    !document.querySelector('#{{ .Id }}-lookup-dropdown:popover-open') && evt.code !== 'Escape' && document.querySelector('#{{ .Id }}-lookup-dropdown')?.showPopover();
-                    evt.code === 'Enter' && (
-                        $fields.{{ .Id }}.addValue = $fields.{{ .Id }}.search.trim(),
-                        $fields.{{ .Id }}.addValue !== '' && @post('/fields/{{ $.Id }}/widgets/lookup/add'),
-                        $fields.{{ .Id }}.search = '',
-                        document.querySelector('#{{ .Id }}-lookup-dropdown')?.hidePopover()
-                    );
-                    evt.code === 'Backspace' && $fields.{{ .Id }}.search === '' && $fields.{{ .Id }}.value !== '' && @post('/fields/{{ .Id }}/reset');
-                    evt.code === 'ArrowUp' && evt.target.closest('.fieldset')?.querySelector('ul > li:last-of-type')?.focus();
-                    evt.code === 'ArrowDown' && evt.target.closest('.fieldset')?.querySelector('ul > li:first-of-type')?.focus();
-                    ['Enter', 'ArrowUp', 'ArrowDown'].includes(evt.code) && (evt.preventDefault(), evt.stopPropagation());
-                "
                 data-star-on-signal-change-fields.{{ .Id }}.search__debounce.700ms="$fields.{{ .Id }}.offset = 0; @get('/fields/{{ .Id }}/widgets/lookup/list')"
+                data-star-on-keydown="!document.querySelector('#{{ .Id }}-lookup-dropdown:popover-open') && evt.code !== 'Escape' && document.querySelector('#{{ .Id }}-lookup-dropdown')?.showPopover()"
+                data-star-key-arrowup__prestop="evt.target.closest('.fieldset')?.querySelector('ul > li:last-of-type')?.focus()"
+                data-star-key-arrowdown__prestop="evt.target.closest('.fieldset')?.querySelector('ul > li:first-of-type')?.focus()"
+                data-star-key-enter__prestop="
+                    $fields.{{ .Id }}.addValue = $fields.{{ .Id }}.search.trim();
+                    $fields.{{ .Id }}.addValue !== '' && @post('/fields/{{ $.Id }}/widgets/lookup/add');
+                    $fields.{{ .Id }}.search = '';
+                    document.querySelector('#{{ .Id }}-lookup-dropdown')?.hidePopover();
+                "
+                data-star-key-backspace="
+                    $fields.{{ .Id }}.search === '' && $fields.{{ .Id }}.value !== '' && (
+                        {{ if eq .Type "array" }}
+                            $fields.{{ .Id }}.removeByIndex = [...document.getElementById('{{ .Id }}-lookup-anchor').querySelectorAll('.badge')].length - 1,
+                            @post('/fields/{{ .Id }}/widgets/lookup/reset')
+                        {{ else }}
+                            @post('/fields/{{ .Id }}/widgets/lookup/reset')
+                        {{ end }}
+                    )
+                "
             />
 
             <span
@@ -83,12 +89,9 @@
     <ul
         id="{{ .Id }}-lookup-list"
         class="menu"
-        data-star-on-keydown="
-            evt.code === 'ArrowUp' && (evt.target.previousElementSibling ? evt.target.previousElementSibling.focus() : evt.target.parentElement.querySelector('li:last-of-type')?.focus());
-            evt.code === 'ArrowDown' && (evt.target.nextElementSibling ? evt.target.nextElementSibling.focus() : evt.target.parentElement.querySelector('li:first-of-type')?.focus());
-            ['ArrowUp', 'ArrowDown'].includes(evt.code) && (evt.preventDefault(), evt.stopPropagation());
-            (evt.key.length === 1 || evt.code === 'Space' || (evt.code === 'Backspace' && $fields.{{ $.Id }}.search !== '')) && evt.target.closest('.fieldset')?.querySelector('input')?.focus();
-        "
+        data-star-key-arrowup__prestop="evt.target.previousElementSibling ? evt.target.previousElementSibling.focus() : evt.target.parentElement.querySelector('li:last-of-type')?.focus()"
+        data-star-key-arrowdown__prestop="evt.target.nextElementSibling ? evt.target.nextElementSibling.focus() : evt.target.parentElement.querySelector('li:first-of-type')?.focus()"
+        data-star-on-keydown="(evt.key.length === 1 || evt.code === 'Space' || (evt.code === 'Backspace' && $fields.{{ $.Id }}.search !== '')) && evt.target.closest('.fieldset')?.querySelector('input')?.focus()"
         {{ if not .SkipGetList }}
             data-star-on-intersect__once="@get('/fields/{{ .Id }}/widgets/lookup/list')"
         {{ end }}
@@ -153,22 +156,19 @@
         {{end}}
     "
     data-star-on-blur="!evt.relatedTarget && evt.target.closest('.fieldset')?.querySelector('input')?.focus()"
-    data-star-on-keydown="
-        evt.code === 'Enter' && (
-            ($fields.{{ .Id }}.items.{{ .ValueId }}.selected ? (
+    data-star-key-enter__prestop="
+            $fields.{{ .Id }}.items.{{ .ValueId }}.selected ? (
                 $fields.{{ .Id }}.removeByValue = '{{ .Value }}',
                 @post('/fields/{{ .Id }}/widgets/lookup/reset')
             ) : (
                 $fields.{{ .Id }}.addValue = '{{ .Value }}',
                 @post('/fields/{{ .Id }}/widgets/lookup/add'),
                 $fields.{{ .Id }}.search = ''
-            )),
+            );
             {{ if ne .Type "array" }}
-                document.querySelector('#{{ .Id }}-lookup-dropdown')?.hidePopover(),
+                document.querySelector('#{{ .Id }}-lookup-dropdown')?.hidePopover();
             {{end}}
-            evt.preventDefault(),
-            evt.stopPropagation()
-        )"
+        "
     {{if and .IsLast .HasMore }} 
         data-star-on-intersect__once="@get('/fields/{{ .Id }}/widgets/lookup/list')" 
     {{end}}
