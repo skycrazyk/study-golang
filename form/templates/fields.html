@@ -11,29 +11,22 @@
 {{ define "input_string" }}
     <input
         data-star-signals="{ fields: { {{ .Id }}: { value: ''} } }"
-        data-star-signals-fields.{{ .Id }}.abort-ctrl__case.camel="new AbortController()"
-        data-star-on-signal-change-fields.{{ .Id }}.value__debounce.1s="
-            $fields.{{ .Id }}.abortCtrl?.abort?.(); 
-            $fields.{{ .Id }}.abortCtrl = new AbortController();
-            @post('/fields/{{ .Id }}/widgets/input-string/change', { abort: $fields.{{ .Id }}.abortCtrl.signal })
-        "
-        data-star-bind="$fields.{{ .Id }}.value"
+        data-star-bind="fields.{{ .Id }}.value"
+        data-star-on-signal-patch__debounce.1s="@post('/fields/{{ .Id }}/widgets/input-string/change')"
+        data-on-signal-patch-filter='{include: /^fields.{{ .Id }}.value$/}'
         class="input w-full" 
     />
 {{ end }}
 
 {{ define "input_number" }}
+    <!-- FIX data-star-on-signal-patch-filter не работает https://github.com/starfederation/datastar/blob/develop/library/src/plugins/attributes/onSignalPatch.ts#L38 -->
     <input 
         data-star-signals="{ fields: { {{ .Id }}: { value: '' } } }"
-        data-star-signals-fields.{{ .Id }}.abort-ctrl__case.camel="new AbortController()"
-        data-star-on-signal-change-fields.{{ .Id }}.value__debounce.1s="
-            $fields.{{ .Id }}.abortCtrl?.abort?.(); 
-            $fields.{{ .Id }}.abortCtrl = new AbortController();
-            @post('/fields/{{ .Id }}/widgets/input-number/change', { abort: $fields.{{ .Id }}.abortCtrl.signal })
-        "
-        data-star-bind="$fields.{{ .Id }}.value"
-        type="number"
+        data-star-bind="fields.{{ .Id }}.value"
+        data-star-on-signal-patch__debounce.1s="@post('/fields/{{ .Id }}/widgets/input-number/change')"
+        data-on-signal-patch-filter='{include: /^fields.{{ .Id }}.value$/}'
         class="input w-full" 
+        type="number"
     />
 {{ end }}
 
@@ -48,9 +41,10 @@
     >
         <input
             class="grow gap-1 mt-0.5 w-auto min-w-[50px] h-[20px]"
-            data-star-bind="$fields.{{ .Id }}.search"
+            data-star-bind="fields.{{ .Id }}.search"
             data-star-on-blur="!$fields.{{ .Id }}.open && ($fields.{{ .Id }}.search = '')"
-            data-star-on-signal-change-fields.{{ .Id }}.search__debounce.700ms="$fields.{{ .Id }}.offset = 0; @get('/fields/{{ .Id }}/widgets/lookup/list')"
+            data-star-on-signal-patch__debounce.700ms="$fields.{{ .Id }}.offset = 0; @get('/fields/{{ .Id }}/widgets/lookup/list')"
+            data-on-signal-patch-filter="{include: /fields.{{ .Id }}.search/}"
             data-star-on-keydown="!$fields.{{ .Id }}.open && evt.code !== 'Escape' && ($fields.{{ .Id }}.open = true)"
             data-star-key-arrowup__prestop="evt.target.closest('.fieldset')?.querySelector('ul > li:last-of-type')?.focus()"
             data-star-key-arrowdown__prestop="evt.target.closest('.fieldset')?.querySelector('ul > li:first-of-type')?.focus()"
@@ -73,7 +67,7 @@
         />
 
         <span
-            data-star-show="$fields.{{ .Id }}.value !== null"
+            data-star-show="$fields.{{ .Id }}.value"
             data-star-on-click__stop="@post('/fields/{{ .Id }}/widgets/lookup/reset')"
             class="bg-gray-200 hover:bg-gray-300 transition-colors p-1 rounded-[50%] absolute right-2 top-2 cursor-pointer z-1"
         >

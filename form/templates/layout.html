@@ -15,7 +15,7 @@
     <script type="importmap">
     {
         "imports": {
-          "datastar": "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.0-beta.11/bundles/datastar-aliased.js",
+          "datastar": "https://cdn.jsdelivr.net/gh/starfederation/datastar@main/bundles/datastar-aliased.js",
           "utils/text": "https://cdn.jsdelivr.net/npm/@starfederation/datastar@1.0.0-beta.11/dist/utils/text.js"
         }
     }
@@ -24,20 +24,36 @@
         import { load } from 'datastar'
         import { modifyCasing, trimDollarSignPrefix } from 'utils/text'
 
+        const pathToObj = (
+          target,
+          paths,
+        ) => {
+          for (const path in paths) {
+            const keys = path.split('.')
+            const lastKey = keys.pop()
+            const obj = keys.reduce((acc, key) => (acc[key] ??= {}), target)
+            obj[lastKey] = paths[path]
+          }
+          return target
+        }
+
         load({
-          type: 1,
+          type: 'attribute',
           name: 'popover',
-          keyReq: 3,
-          valReq: 3,
-          onLoad: ({ el, key, mods, signals, value, effect }) => {
+          keyReq: 'exclusive',
+          valReq: 'exclusive',
+          shouldEvaluate: false,
+          onLoad: (ctx) => {
+            const { el, key, mods, value, effect, mergePatch, getPath, hasPath } = ctx
+
             el.setAttribute('popover', '')
 
             const signalName = key
               ? modifyCasing(key, mods)
               : trimDollarSignPrefix(value)
-            
+
             const setPopoverFromSignal = () => {
-              if(signals.value(signalName)) {
+              if(getPath(signalName)) {
                 el.showPopover?.()
 
                 if (mods.has('top')) {
@@ -51,11 +67,11 @@
 
             const setSignalFromPopover = (event) => {
                 if (event.newState === 'open' && event.oldState !== 'open') {
-                  signals.setValue(signalName, true)
+                  mergePatch(pathToObj({}, { [signalName]: true }))
                 }
 
                 if (event.newState === 'closed' && event.oldState !== 'closed') {
-                  signals.setValue(signalName, false)
+                  mergePatch(pathToObj({}, { [signalName]: false }))
                 }
             }
 
@@ -74,14 +90,13 @@
       import { load } from 'datastar';
 
       load({
-        type: 1,
+        type: 'attribute',
         name: 'key',
-        keyReq: 1,
-        valReq: 1,
+        keyReq: 'allowed',
+        valReq: 'allowed',
         argNames: ['evt'],
         onLoad: (ctx) => {
-          const {el, key, mods, genRX} = ctx
-          const rx = genRX()
+          const {el, key, mods, rx } = ctx
 
           let callback = (evt) => {
             if (evt) {
@@ -89,10 +104,12 @@
               if (mods.has('prevent') || mods.has('prestop')) evt.preventDefault()
               if (mods.has('stop') || mods.has('prestop')) evt.stopPropagation()
             }
+
             rx(evt)
           }
 
           el.addEventListener('keydown', callback)
+
           return () => {
             el.removeEventListener('keydown', callback)
           }
@@ -108,6 +125,7 @@
   <body class="p-4">
     <h1 class="font-bold text-4xl mb-4">User form</h1>
     {{ template "form" . }}
+    {{ template "stateView" }}
   </body>
 </html>
 {{ end }}
