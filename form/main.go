@@ -14,7 +14,7 @@ import (
 
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/go-chi/chi/v5"
-	datastar "github.com/starfederation/datastar/sdk/go"
+	datastar "github.com/starfederation/datastar-go/datastar"
 )
 
 type AppSignals = struct {
@@ -246,6 +246,7 @@ func handleLookupList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	field, lookupSignals := getLookupField(w, r, nil, appSignals)
+
 	listId := fmt.Sprintf("%s-lookup-list", field.Id) 
 
 	sse := datastar.NewSSE(w, r)
@@ -275,21 +276,21 @@ func handleLookupList(w http.ResponseWriter, r *http.Request) {
 
 	itemsRender := templ("lookup_items", itemsData)
 
-	fmm := datastar.FragmentMergeModeAppend 
+	fmm := datastar.ElementPatchModeAppend 
 
 	if lookupSignals.Offset == 0 {
 		// FIX  FragmentMergeModeInner работает некорректно с массивом 
 		// поэтому очищаем список с помощью передачи пустого элемента
 		// fmm = datastar.FragmentMergeModeInner
-		sse.MergeFragments(templ("lookup_list", struct { Id string; SkipGetList bool }{ Id: field.Id, SkipGetList: true }),)
+		sse.PatchElements(templ("lookup_list", struct { Id string; SkipGetList bool }{ Id: field.Id, SkipGetList: true }),)
 	}
 
-	sse.MergeSignals([]byte(`{ fields: {` + field.Id + `: {"offset":` + strconv.Itoa(lookupSignals.Offset + lookupSignals.Limit) + `}}}`))
+	sse.PatchSignals([]byte(`{ fields: {` + field.Id + `: {"offset":` + strconv.Itoa(lookupSignals.Offset + lookupSignals.Limit) + `}}}`))
 
-	sse.MergeFragments(
+	sse.PatchElements(
 		itemsRender, 
 		datastar.WithSelector(fmt.Sprintf(`#%s`, listId)), 
-		datastar.WithMergeMode(fmm),
+		datastar.WithMode(fmm),
 	)
 
 	// log.Println("start: ", start, ", ", "end: ", end, ", ", "offset: ", lookupSignals.Offset,", ", "mode: ", fmm)
@@ -311,10 +312,10 @@ func handleSubmit(w http.ResponseWriter, r *http.Request) {
 
 	sse := datastar.NewSSE(w, r)
 
-	sse.MergeFragments(
+	sse.PatchElements(
 		"<div id=\"form-status\">Форма успешно отправлена!</div>",
 		datastar.WithSelector("#form"),
-		datastar.WithMergeMode(datastar.FragmentMergeModeAfter),
+		datastar.WithMode(datastar.ElementPatchModeAfter),
 	)
 }
 
@@ -348,14 +349,14 @@ func handleReset(w http.ResponseWriter, r *http.Request) {
 			if ok && widget.Reset != nil {
 				widget.Reset(w, r, &field.Id, sse, appSignals)
 			} else {
-				sse.MergeSignals([]byte(`{ fields: {"` + field.Id + `": {value: null }}}`))
+				sse.PatchSignals([]byte(`{ fields: {"` + field.Id + `": {value: null }}}`))
 			}
 		}
     } else {
-        sse.MergeSignals([]byte(`{ fields: {"` + fieldId + `": {value: null }}}`))
+        sse.PatchSignals([]byte(`{ fields: {"` + fieldId + `": {value: null }}}`))
     }
 
-	sse.RemoveFragments("#form-status")
+	sse.RemoveElement("#form-status")
 }
 
 func startEnd(offset int, limit int, total int) (int, int) {
@@ -437,7 +438,7 @@ func handleLookupAdd(w http.ResponseWriter, r *http.Request) {
 	if field.Type == "array" {
 		if arr, ok := lookupSignals.Value.([]any); ok {
 			nextValue = append(arr, lookupSignals.AddValue)
-		} else if lookupSignals.Value == nil {
+		} else if lookupSignals.Value == "" {
 			nextValue = []any{lookupSignals.AddValue}
 		}
 	} else {
@@ -454,10 +455,10 @@ func handleLookupAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sse.MergeSignals([]byte(fmt.Sprintf(`{ fields: {"%s": {value: %s}}}`, field.Id, string(jsonValue))))
+	sse.PatchSignals([]byte(fmt.Sprintf(`{ fields: {"%s": {value: %s}}}`, field.Id, string(jsonValue))))
 
 	var mfs string
-	var mfm datastar.FragmentMergeMode 
+	var mfm datastar.ElementPatchMode 
 
 	var nextLen int
 
@@ -470,11 +471,14 @@ func handleLookupAdd(w http.ResponseWriter, r *http.Request) {
 
 	if nextLen >= 2 {
 		mfs = fmt.Sprintf("#%s-lookup-anchor > .badge:last-of-type", field.Id)
-		mfm = datastar.FragmentMergeModeAfter
+		mfm = datastar.ElementPatchModeAfter
 	} else {
 		mfs = fmt.Sprintf("#%s-lookup-anchor", field.Id)
-		sse.RemoveFragments(fmt.Sprintf("#%s-lookup-anchor > .badge", field.Id))
-		mfm = datastar.FragmentMergeModePrepend
+		mfm = datastar.ElementPatchModePrepend
+
+		if (lookupSignals.Value != "") {
+			sse.RemoveElement(fmt.Sprintf("#%s-lookup-anchor > .badge", field.Id))
+		}
 	}
 
 	valueRender := templ("lookup_value", struct {
@@ -487,10 +491,10 @@ func handleLookupAdd(w http.ResponseWriter, r *http.Request) {
 		Type:  field.Type,
 	})
 
-	sse.MergeFragments(
+	sse.PatchElements(
 		valueRender,
 		datastar.WithSelector(mfs),
-		datastar.WithMergeMode(mfm),
+		datastar.WithMode(mfm),
 	)
 }
 
@@ -533,7 +537,7 @@ func lookupReset(w http.ResponseWriter, r *http.Request, fieldId *string, sse *d
 			}
 		}
 
-		sse.MarshalAndMergeSignals(map[string]map[string]any{
+		sse.MarshalAndPatchSignals(map[string]map[string]any{
 			"fields": {
 				field.Id: map[string]any{
 					"value": lookupSignals.Value,
@@ -542,7 +546,7 @@ func lookupReset(w http.ResponseWriter, r *http.Request, fieldId *string, sse *d
 			},
 		})
 
-		sse.RemoveFragments(fmt.Sprintf("#%s-lookup-anchor > .badge:nth-child(%d)", field.Id, lookupSignals.RemoveByIndex+1))
+		sse.RemoveElement(fmt.Sprintf("#%s-lookup-anchor > .badge:nth-child(%d)", field.Id, lookupSignals.RemoveByIndex+1))
 
 		return
 	} else if lookupSignals.RemoveByValue != nil {
@@ -576,7 +580,7 @@ func lookupReset(w http.ResponseWriter, r *http.Request, fieldId *string, sse *d
 			}
 		}
 
-		sse.MarshalAndMergeSignals(map[string]map[string]any{
+		sse.MarshalAndPatchSignals(map[string]map[string]any{
 			"fields": {
 				field.Id: map[string]any{
 					"value": lookupSignals.Value,
@@ -586,15 +590,18 @@ func lookupReset(w http.ResponseWriter, r *http.Request, fieldId *string, sse *d
 			},
 		})
 
-		sse.RemoveFragments(fmt.Sprintf("#%s-lookup-anchor > .badge:nth-child(%d)", field.Id, removeIndex+1))
+		sse.RemoveElement(fmt.Sprintf("#%s-lookup-anchor > .badge:nth-child(%d)", field.Id, removeIndex+1))
 
 		return
 	}
 
-	sse.MergeSignals([]byte(`{ fields: {"` + field.Id + `": {value: null, removeByIndex: -1, removeByValue: null}}}`))
-	sse.RemoveFragments(fmt.Sprintf("#%s-lookup-anchor > .badge", field.Id))
+	sse.PatchSignals([]byte(`{ fields: {"` + field.Id + `": {value: null, removeByIndex: -1, removeByValue: null}}}`))
+
+	if (lookupSignals.Value != "") {
+		sse.RemoveElement(fmt.Sprintf("#%s-lookup-anchor > .badge", field.Id))
+	}
 }
 
 func inputStringReset(w http.ResponseWriter, r *http.Request, fieldId *string, sse *datastar.ServerSentEventGenerator, appSignals *AppSignals) {
-	sse.MergeSignals([]byte(`{ fields: {"` + *fieldId + `": {value: "" }}}`))
+	sse.PatchSignals([]byte(`{ fields: {"` + *fieldId + `": {value: "" }}}`))
 }

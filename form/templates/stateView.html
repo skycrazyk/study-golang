@@ -1,0 +1,11 @@
+{{ define "stateView" }}
+<button 
+  class="btn" 
+  data-star-signals="{stateView: true}" 
+  style="position: fixed; bottom: 0; right: 0; z-index: 2;" data-star-on-click="$stateView = !$stateView"
+>Toggle state view</button>
+<pre 
+style="position: fixed; right: 0; bottom: 0; left: 0; height: 500px; overflow: auto; border-top: 1px solid blueviolet; background-color: azure; z-index: 1;"
+data-star-style="{ display: $stateView ? 'block' : 'none'}"
+data-star-json-signals></pre>
+{{ end }}

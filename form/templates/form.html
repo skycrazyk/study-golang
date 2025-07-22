@@ -1,12 +1,16 @@
 {{ define "form" }}
-<fieldset class="fieldset bg-base-200 border-base-300 rounded-box w-xl border p-4" data-star-signals-introspect="new AbortController()">
+<fieldset class="fieldset bg-base-200 border-base-300 rounded-box w-xl border p-4">
   <form 
     id="form" 
     data-star-on-submit="@put('/submit')" 
     data-star-indicator-_submitting
   >
     {{ .Content }}
-    <p class="mt-4" data-star-on-signal-change-fields.*.value__debounce.500ms="$introspect?.abort?.(); $introspect = new AbortController(); @post('/introspect', {abort: $introspect.signal})">
+    <p 
+      class="mt-4" 
+      data-star-on-signal-patch__debounce.500ms="@post('/introspect')"
+      data-on-signal-patch-filter="{include: /^fields\..+\.value$/}"
+    >
       <button class="btn btn-primary" type="submit">Submit <span data-star-show="$_submitting" class="loading loading-spinner loading-sm"></span></button>
       <button class="btn" type="button" data-star-on-click__stop="@post('/reset')" data-star-indicator-_reset>Reset  <span data-star-show="$_reset" class="loading loading-spinner loading-sm"></span></button>
     </p>
